@@ -27,8 +27,8 @@ func NewRecordFile(
 	wg *sync.WaitGroup,
 	resultsChan chan *models.ResultData,
 	errorsChan chan error,
-	goNum int) *RecordFile {
-	return &RecordFile{
+	goNum int) RecordInt {
+	return RecordFile{
 		handler:     handler,
 		resultsChan: resultsChan,
 		errorsChan:  errorsChan,
@@ -37,7 +37,7 @@ func NewRecordFile(
 	}
 }
 
-func (rf *RecordFile) ReadLines(file *os.File) error {
+func (rf RecordFile) ReadLines(file *os.File) error {
 	var (
 		counter int
 		lines   int
@@ -45,7 +45,6 @@ func (rf *RecordFile) ReadLines(file *os.File) error {
 	)
 
 	scanner := bufio.NewScanner(file)
-	wg := &sync.WaitGroup{}
 	for scanner.Scan() {
 		bytes := scanner.Bytes()
 		record, decodeError := rf.decodeLine(bytes)
@@ -57,7 +56,7 @@ func (rf *RecordFile) ReadLines(file *os.File) error {
 		counter++
 		records = append(records, record)
 		if counter == rf.goNum {
-			wg.Add(1)
+			rf.wg.Add(1)
 			go rf.fetchPages(records)
 			counter = 0
 			records = []*models.Record{}
@@ -70,16 +69,14 @@ func (rf *RecordFile) ReadLines(file *os.File) error {
 
 	go func(wg *sync.WaitGroup, resultDataChan chan *models.ResultData, errorsChan chan error) {
 		wg.Wait()
-		fmt.Println("Succesfully waited")
-		close(errorsChan)
 		close(resultDataChan)
+		close(errorsChan)
 	}(rf.wg, rf.resultsChan, rf.errorsChan)
-
 	log.Printf("Overall lines: %d", lines)
 	log.Printf("Go num: %d", rf.goNum)
 	return nil
 }
-func (rf *RecordFile) decodeLine(bytes []byte) (*models.Record, error) {
+func (rf RecordFile) decodeLine(bytes []byte) (*models.Record, error) {
 	var record models.Record
 	if unmarshalErr := json.Unmarshal(bytes, &record); unmarshalErr != nil {
 		return nil, fmt.Errorf("Error of record unmarshalling: %s", unmarshalErr)
@@ -87,7 +84,7 @@ func (rf *RecordFile) decodeLine(bytes []byte) (*models.Record, error) {
 	return &record, nil
 }
 
-func (rf *RecordFile) fetchPages(records []*models.Record) {
+func (rf RecordFile) fetchPages(records []*models.Record) {
 	defer rf.wg.Done()
 
 	for _, rec := range records {
@@ -102,7 +99,7 @@ func (rf *RecordFile) fetchPages(records []*models.Record) {
 	fmt.Println("Page has finished")
 }
 
-func (rf *RecordFile) fetchPage(url string, categories []string) (*models.ResultData, error) {
+func (rf RecordFile) fetchPage(url string, categories []string) (*models.ResultData, error) {
 	resp, respErr := http.Get(url)
 	if respErr != nil {
 		return nil, respErr

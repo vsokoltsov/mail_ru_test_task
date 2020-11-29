@@ -91,7 +91,7 @@ func fetchPage(url string, categories []string) *FileData {
 
 		switch tt {
 		case html.ErrorToken:
-			log.Fatal(err)
+			log.Fatal(html.ErrorToken)
 		case html.StartTagToken, html.SelfClosingTagToken:
 			if t.Data == "title" {
 				tokenType := tokenizer.Next()

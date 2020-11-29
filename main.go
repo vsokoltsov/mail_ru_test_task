@@ -56,7 +56,7 @@ func prepareString(str string) string {
 	data := strings.Replace(str, "\n", " ", -1)
 	data = strings.TrimSpace(data)
 	if !utf8.ValidString(data) {
-		fmt.Println(data)
+		log.Printf("Non-utf8 encoding: %s", data)
 	}
 	return data
 }
@@ -80,7 +80,6 @@ func fetchPage(url string, categories []string) *FileData {
 		data.Description = "Not Found"
 		return &data
 	}
-
 	tokenizer := html.NewTokenizer(resp.Body)
 	for {
 		tt := tokenizer.Next()
@@ -133,19 +132,28 @@ func fetchPages(records []*Record, urlsChan chan *FileData, globalWG *sync.WaitG
 
 }
 
-func writeToFile(categoryName string, fileDatas []*FileData, wg *sync.WaitGroup) {
-	f, err := os.Create("./results/" + categoryName + ".tsv")
-	if err != nil {
-		log.Fatal(err)
+func writeToFile(
+	categoryName string,
+	fileDatas []*FileData) {
+
+	var (
+		f       *os.File
+		fileErr error
+	)
+
+	path := "./results/" + categoryName
+	if _, err := os.Stat(path); err == nil {
+		f, fileErr = os.Open(path)
+	} else {
+		f, fileErr = os.Create("./results/" + categoryName + ".tsv")
 	}
 	defer f.Close()
 
+	if fileErr != nil {
+		log.Fatal(fileErr)
+	}
+
 	for _, fd := range fileDatas {
-		if strings.Contains(fd.Title, "KazanFirst") {
-			trimTitle := strings.TrimSpace(fd.Title)
-			fmt.Println(trimTitle)
-			fmt.Println(fd.Title)
-		}
 		f.Write([]byte(strings.Join([]string{fd.URL, fd.Title, fd.Description, "\n"}, " ")))
 	}
 
@@ -160,7 +168,6 @@ func main() {
 		counter         int
 		records         []*Record
 		categoriesData  = make(map[string][]*FileData)
-		otherCategories = make(map[string]int)
 	)
 
 	file, err := os.Open("./500.jsonl")
@@ -175,19 +182,6 @@ func main() {
 		bytes := scanner.Bytes()
 		if unmarshalErr := json.Unmarshal(bytes, &record); unmarshalErr != nil {
 			log.Fatalf("Error of record unmarshalling: %s", unmarshalErr)
-		}
-
-		if record.URL == "https://womanel.com/shou-biz/novosti-znamenitostej/2019/06/24/filipp-kirkorov-rezko-postarel-i-posidel/" {
-			fmt.Println(record)
-		}
-
-		for _, category := range record.Categories {
-			_, ok := otherCategories[category]
-			if ok {
-				otherCategories[category]++
-			} else {
-				otherCategories[category] = 1
-			}
 		}
 
 		counter++
@@ -223,9 +217,9 @@ func main() {
 		}
 	}
 
-	fileWG := &sync.WaitGroup{}
 	for key, value := range categoriesData {
-		writeToFile(key, value, fileWG)
+		writeToFile(key, value)
 	}
-	fmt.Println("All categories", otherCategories)
+
+	fmt.Println("Finished execution")
 }

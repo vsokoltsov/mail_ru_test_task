@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"relap/pkg/models"
 	"relap/pkg/repositories/handler"
+	"relap/pkg/repositories/storage"
+	"strings"
 	"sync"
 )
 
@@ -20,6 +21,7 @@ type RecordFile struct {
 	resultsChan chan *models.ResultData
 	errorsChan  chan error
 	goNum       int
+	storage     storage.StorageInt
 }
 
 func NewRecordFile(
@@ -27,21 +29,24 @@ func NewRecordFile(
 	wg *sync.WaitGroup,
 	resultsChan chan *models.ResultData,
 	errorsChan chan error,
-	goNum int) RecordInt {
+	goNum int,
+	storage storage.StorageInt) RecordInt {
 	return RecordFile{
 		handler:     handler,
 		resultsChan: resultsChan,
 		errorsChan:  errorsChan,
 		goNum:       goNum,
 		wg:          wg,
+		storage:     storage,
 	}
 }
 
-func (rf RecordFile) ReadLines(file *os.File) error {
+func (rf RecordFile) ReadLines(file *os.File) (map[string][]*models.ResultData, error) {
 	var (
-		counter int
-		lines   int
-		records []*models.Record
+		counter  int
+		lines    int
+		records  []*models.Record
+		exitChan = make(chan bool)
 	)
 
 	scanner := bufio.NewScanner(file)
@@ -49,7 +54,7 @@ func (rf RecordFile) ReadLines(file *os.File) error {
 		bytes := scanner.Bytes()
 		record, decodeError := rf.decodeLine(bytes)
 		if decodeError != nil {
-			return decodeError
+			return nil, decodeError
 		}
 
 		lines++
@@ -64,17 +69,18 @@ func (rf RecordFile) ReadLines(file *os.File) error {
 	}
 
 	if scannerErr := scanner.Err(); scannerErr != nil {
-		return scannerErr
+		return nil, scannerErr
 	}
 
-	go func(wg *sync.WaitGroup, resultDataChan chan *models.ResultData, errorsChan chan error) {
+	go func(wg *sync.WaitGroup, resultDataChan chan *models.ResultData, errorsChan chan error, exitChan chan bool) {
 		wg.Wait()
 		close(resultDataChan)
 		close(errorsChan)
-	}(rf.wg, rf.resultsChan, rf.errorsChan)
-	log.Printf("Overall lines: %d", lines)
-	log.Printf("Go num: %d", rf.goNum)
-	return nil
+		exitChan <- true
+	}(rf.wg, rf.resultsChan, rf.errorsChan, exitChan)
+
+	results := rf.formCategoriesData(exitChan)
+	return results, nil
 }
 func (rf RecordFile) decodeLine(bytes []byte) (*models.Record, error) {
 	var record models.Record
@@ -95,8 +101,6 @@ func (rf RecordFile) fetchPages(records []*models.Record) {
 			rf.resultsChan <- data
 		}
 	}
-
-	fmt.Println("Page has finished")
 }
 
 func (rf RecordFile) fetchPage(url string, categories []string) (*models.ResultData, error) {
@@ -122,4 +126,56 @@ func (rf RecordFile) fetchPage(url string, categories []string) (*models.ResultD
 	resultData.URL = url
 	resultData.Categories = categories
 	return resultData, nil
+}
+
+func (rf RecordFile) formCategoriesData(exitChan chan bool) map[string][]*models.ResultData {
+	results := make(map[string][]*models.ResultData)
+	for {
+		select {
+		case result := <-rf.resultsChan:
+			if result != nil {
+				for _, category := range result.Categories {
+					_, ok := results[category]
+					if ok {
+						results[category] = append(results[category], result)
+					} else {
+						results[category] = []*models.ResultData{result}
+					}
+				}
+			}
+		case err := <-rf.errorsChan:
+			if err != nil {
+				fmt.Printf("Request error: %s", err)
+			}
+		case <-exitChan:
+			return results
+		}
+	}
+}
+
+func (rf RecordFile) SaveResults(dir, ext, categoryName string, results []*models.ResultData) (string, error) {
+	var (
+		f       *os.File
+		fileErr error
+	)
+
+	path := rf.storage.ResultPath(dir, categoryName, ext)
+	if _, err := os.Stat(path); err == nil {
+		f, fileErr = rf.storage.OpenFile(path)
+	} else {
+		f, fileErr = rf.storage.CreateFile(path)
+	}
+	defer f.Close()
+
+	if fileErr != nil {
+		return "", fileErr
+	}
+
+	for _, fd := range results {
+		f.Write([]byte(strings.Join([]string{fd.URL, fd.Title, fd.Description, "\n"}, " ")))
+	}
+
+	f.Sync()
+
+	return path, nil
 }

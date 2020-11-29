@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"relap/pkg/models"
 	"relap/pkg/repositories/handler"
@@ -13,8 +12,9 @@ import (
 
 func main() {
 	var (
-		path = flag.String("file", "./../../500.jsonl", "Path to a file")
-		// resultsDirPtr  = flag.String("results", "./../../results/", "Folder with result files")
+		path           = flag.String("file", "./../../500.jsonl", "Path to a file")
+		resultsDir     = flag.String("results", "./../../results/", "Folder with result files.")
+		resultExt      = flag.String("ext", "tsv", "Extension of the resulting file.")
 		goNum          = flag.Int("go-num", 25, "Number of pages per goroutines")
 		wg             = &sync.WaitGroup{}
 		resultDataChan = make(chan *models.ResultData)
@@ -32,6 +32,7 @@ func main() {
 		resultDataChan,
 		errorsChan,
 		*goNum,
+		fs,
 	)
 
 	file, fileErr := fs.OpenFile(*path)
@@ -40,29 +41,16 @@ func main() {
 	}
 	defer file.Close()
 
-	readErr := recordFile.ReadLines(file)
+	results, readErr := recordFile.ReadLines(file)
 	if readErr != nil {
 		log.Fatal(readErr)
 	}
 
-	for chanErr := range errorsChan {
-		fmt.Printf("Request error: %s", chanErr)
-	}
-
-	for fileData := range resultDataChan {
-		if fileData != nil {
-			for _, category := range fileData.Categories {
-				_, ok := results[category]
-				if ok {
-					results[category] = append(results[category], fileData)
-				} else {
-					results[category] = []*models.ResultData{fileData}
-				}
-			}
+	for category, results := range results {
+		path, saveErr := recordFile.SaveResults(*resultsDir, *resultExt, category, results)
+		if saveErr != nil {
+			log.Fatal(saveErr)
 		}
+		log.Printf("Path for %s category: %s", category, path)
 	}
-
-	fmt.Println(results)
-
-	fmt.Println("Finished execution")
 }

@@ -1,3 +1,7 @@
+# Test task
+
+![Go](https://github.com/vsokoltsov/mrg_test_task/workflows/Go/badge.svg)
+
 Есть семпл выгрузки из хадупа в 500 строк. Пример:
 ```
 {"url": "http://ura-povara.ru/journal/6-produktov-kotorye-mogut-navredit-zhelchnomu-puzyrju", "state": "checked", "categories": ["good_site"], "category_another": "", "for_main_page": false, "ctime": 1567713280}

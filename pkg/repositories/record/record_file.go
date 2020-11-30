@@ -11,6 +11,7 @@ import (
 	"relap/pkg/repositories/storage"
 	"strings"
 	"sync"
+	"time"
 )
 
 var counterCalls int
@@ -22,6 +23,7 @@ type RecordFile struct {
 	errorsChan  chan error
 	goNum       int
 	storage     storage.StorageInt
+	client      *http.Client
 }
 
 func NewRecordFile(
@@ -38,6 +40,9 @@ func NewRecordFile(
 		goNum:       goNum,
 		wg:          wg,
 		storage:     storage,
+		client: &http.Client{
+			Timeout: 10 * time.Second,
+		},
 	}
 }
 
@@ -104,7 +109,7 @@ func (rf RecordFile) fetchPages(records []*models.Record) {
 }
 
 func (rf RecordFile) fetchPage(url string, categories []string) (*models.ResultData, error) {
-	resp, respErr := http.Get(url)
+	resp, respErr := rf.client.Get(url)
 	if respErr != nil {
 		return nil, respErr
 	}

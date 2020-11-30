@@ -54,7 +54,9 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">relap/pkg/repositories/storage/storage_file.go (100.0%)</option>
+				<option value="file0">relap/pkg/repositories/handler/handler_html.go (100.0%)</option>
+				
+				<option value="file1">relap/pkg/repositories/storage/storage_file.go (100.0%)</option>
 				
 				</select>
 			</div>
@@ -68,7 +70,80 @@
 		</div>
 		<div id="content">
 		
-		<pre class="file" id="file0" style="display: none">package storage
+		<pre class="file" id="file0" style="display: none">package handler
+
+import (
+        "io"
+        "relap/pkg/models"
+        "relap/pkg/utils"
+
+        "golang.org/x/net/html"
+)
+
+type HandlerHtml struct{}
+
+func NewHandlerHTML() HandlerInt <span class="cov8" title="1">{
+        return &amp;HandlerHtml{}
+}</span>
+
+func (hh *HandlerHtml) extractMetaProperty(t html.Token, prop string) (content string, ok bool) <span class="cov8" title="1">{
+        for _, attr := range t.Attr </span><span class="cov8" title="1">{
+                if attr.Key == "name" &amp;&amp; attr.Val == prop </span><span class="cov8" title="1">{
+                        ok = true
+                }</span>
+
+                <span class="cov8" title="1">if attr.Key == "content" </span><span class="cov8" title="1">{
+                        content = attr.Val
+                }</span>
+        }
+
+        <span class="cov8" title="1">return</span>
+}
+
+func (hh *HandlerHtml) Parse(body io.ReadCloser) (*models.ResultData, error) <span class="cov8" title="1">{
+        result := models.ResultData{}
+        tokenizer := html.NewTokenizer(body)
+        for </span><span class="cov8" title="1">{
+                tt := tokenizer.Next()
+                t := tokenizer.Token()
+                tokenErr := tokenizer.Err()
+                if tokenErr == io.EOF </span><span class="cov8" title="1">{
+                        break</span>
+                }
+
+                <span class="cov8" title="1">switch tt </span>{
+                case html.StartTagToken, html.SelfClosingTagToken:<span class="cov8" title="1">
+                        if t.Data == "title" </span><span class="cov8" title="1">{
+                                tokenType := tokenizer.Next()
+                                if tokenType == html.TextToken </span><span class="cov8" title="1">{
+                                        result.Title = utils.PrepareString(tokenizer.Token().Data)
+                                        break</span>
+                                }
+                        }
+                        <span class="cov8" title="1">if t.Data == "meta" </span><span class="cov8" title="1">{
+                                metaDesc, isDesc := hh.extractMetaProperty(t, "description")
+                                if isDesc </span><span class="cov8" title="1">{
+                                        result.Description = utils.PrepareString(metaDesc)
+                                }</span>
+                                <span class="cov8" title="1">metaDescUp, isDescUp := hh.extractMetaProperty(t, "Description")
+                                if isDescUp </span><span class="cov8" title="1">{
+                                        result.Description = utils.PrepareString(metaDescUp)
+                                }</span>
+                                <span class="cov8" title="1">metaTitle, isTitle := hh.extractMetaProperty(t, "title")
+                                if isTitle &amp;&amp; result.Title == "" </span><span class="cov8" title="1">{
+                                        result.Title = utils.PrepareString(metaTitle)
+                                }</span>
+                        }
+                }
+                <span class="cov8" title="1">if result.Title != "" &amp;&amp; result.Description != "" </span><span class="cov8" title="1">{
+                        break</span>
+                }
+        }
+        <span class="cov8" title="1">return &amp;result, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package storage
 
 import "os"
 

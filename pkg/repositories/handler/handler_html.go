@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"io"
 	"relap/pkg/models"
 	"relap/pkg/utils"
@@ -41,8 +40,6 @@ func (hh *HandlerHtml) Parse(body io.ReadCloser) (*models.ResultData, error) {
 		}
 
 		switch tt {
-		case html.ErrorToken:
-			return nil, fmt.Errorf("Error of parsing html tag")
 		case html.StartTagToken, html.SelfClosingTagToken:
 			if t.Data == "title" {
 				tokenType := tokenizer.Next()
@@ -61,7 +58,7 @@ func (hh *HandlerHtml) Parse(body io.ReadCloser) (*models.ResultData, error) {
 					result.Description = utils.PrepareString(metaDescUp)
 				}
 				metaTitle, isTitle := hh.extractMetaProperty(t, "title")
-				if isTitle && result.Title != "" {
+				if isTitle && result.Title == "" {
 					result.Title = utils.PrepareString(metaTitle)
 				}
 			}

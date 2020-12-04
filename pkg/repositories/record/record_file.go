@@ -9,6 +9,7 @@ import (
 	"relap/pkg/models"
 	"relap/pkg/repositories/handler"
 	"relap/pkg/repositories/storage"
+	"relap/pkg/repositories/worker"
 	"strings"
 	"sync"
 	"time"
@@ -17,6 +18,7 @@ import (
 var counterCalls int
 
 type RecordFile struct {
+	collector   *worker.Collector
 	handler     handler.HandlerInt
 	wg          *sync.WaitGroup
 	resultsChan chan *models.ResultData
@@ -27,6 +29,7 @@ type RecordFile struct {
 }
 
 func NewRecordFile(
+	collector *worker.Collector,
 	handler handler.HandlerInt,
 	wg *sync.WaitGroup,
 	resultsChan chan *models.ResultData,
@@ -34,6 +37,7 @@ func NewRecordFile(
 	goNum int,
 	storage storage.StorageInt) RecordInt {
 	return RecordFile{
+		collector:   collector,
 		handler:     handler,
 		resultsChan: resultsChan,
 		errorsChan:  errorsChan,
@@ -46,12 +50,9 @@ func NewRecordFile(
 	}
 }
 
-func (rf RecordFile) ReadLines(file *os.File) (map[string][]*models.ResultData, error) {
+func (rf RecordFile) ReadLines(file *os.File) error {
 	var (
-		counter  int
-		lines    int
-		records  []*models.Record
-		exitChan = make(chan bool)
+		counter int
 	)
 
 	scanner := bufio.NewScanner(file)
@@ -59,40 +60,24 @@ func (rf RecordFile) ReadLines(file *os.File) (map[string][]*models.ResultData, 
 		bytes := scanner.Bytes()
 		record, decodeError := rf.decodeLine(bytes)
 		if decodeError != nil {
-			return nil, decodeError
+			return decodeError
 		}
 
-		lines++
 		counter++
-		records = append(records, record)
-		if counter == rf.goNum {
-			rf.wg.Add(1)
-			go rf.fetchPages(records)
-			counter = 0
-			records = []*models.Record{}
+		if len(record.Categories) > 0 {
+			rf.collector.Work <- worker.Work{Record: record, ID: counter}
 		}
-	}
-
-	if len(records) > 0 {
-		rf.wg.Add(1)
-		go rf.fetchPages(records)
-		counter = 0
-		records = []*models.Record{}
 	}
 
 	if scannerErr := scanner.Err(); scannerErr != nil {
-		return nil, scannerErr
+		return scannerErr
 	}
 
-	go func(wg *sync.WaitGroup, resultDataChan chan *models.ResultData, errorsChan chan error, exitChan chan bool) {
-		wg.Wait()
-		close(resultDataChan)
-		close(errorsChan)
-		exitChan <- true
-	}(rf.wg, rf.resultsChan, rf.errorsChan, exitChan)
-
-	results := rf.formCategoriesData(exitChan)
-	return results, nil
+	go func(workChan chan worker.Work) {
+		close(workChan)
+	}(rf.collector.Work)
+	fmt.Printf("Readed %d lines", counter)
+	return nil
 }
 func (rf RecordFile) decodeLine(bytes []byte) (*models.Record, error) {
 	var record models.Record
@@ -173,7 +158,7 @@ func (rf RecordFile) SaveResults(dir, ext, categoryName string, results []*model
 
 	path := rf.storage.ResultPath(dir, categoryName, ext)
 	if _, err := os.Stat(path); err == nil {
-		f, fileErr = rf.storage.OpenFile(path)
+		f, fileErr = rf.storage.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0644)
 	} else {
 		f, fileErr = rf.storage.CreateFile(path)
 	}

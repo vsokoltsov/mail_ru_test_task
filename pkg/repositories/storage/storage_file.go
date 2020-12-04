@@ -8,8 +8,8 @@ func NewFileStorage() *FileStorage {
 	return &FileStorage{}
 }
 
-func (fs *FileStorage) OpenFile(path string) (*os.File, error) {
-	return os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0644)
+func (fs *FileStorage) OpenFile(path string, flag int, perm os.FileMode) (*os.File, error) {
+	return os.OpenFile(path, flag, perm)
 }
 
 func (fs *FileStorage) CreateFile(path string) (*os.File, error) {

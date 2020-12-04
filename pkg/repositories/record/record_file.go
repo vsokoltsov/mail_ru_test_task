@@ -73,6 +73,13 @@ func (rf RecordFile) ReadLines(file *os.File) (map[string][]*models.ResultData, 
 		}
 	}
 
+	if len(records) > 0 {
+		rf.wg.Add(1)
+		go rf.fetchPages(records)
+		counter = 0
+		records = []*models.Record{}
+	}
+
 	if scannerErr := scanner.Err(); scannerErr != nil {
 		return nil, scannerErr
 	}

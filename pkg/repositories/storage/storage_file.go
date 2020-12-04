@@ -9,7 +9,7 @@ func NewFileStorage() *FileStorage {
 }
 
 func (fs *FileStorage) OpenFile(path string) (*os.File, error) {
-	return os.Open(path)
+	return os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0644)
 }
 
 func (fs *FileStorage) CreateFile(path string) (*os.File, error) {

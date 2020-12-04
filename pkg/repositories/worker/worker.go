@@ -1,7 +1,6 @@
 package worker
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"relap/pkg/models"
@@ -49,12 +48,11 @@ func (w *Worker) Start() {
 			select {
 			case work := <-w.Channel:
 				result, fetchErr := w.fetchPage(work.ID, work.Record)
-				fmt.Println(result, fetchErr)
-				// if fetchErr != nil {
-				// 	w.Errors <- fetchErr
-				// } else {
-				// 	w.ResultData <- result
-				// }
+				if fetchErr != nil {
+					w.Errors <- fetchErr
+				} else {
+					w.ResultData <- result
+				}
 			case <-w.End:
 				return
 			}

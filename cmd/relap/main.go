@@ -23,7 +23,7 @@ func main() {
 		wg    = &sync.WaitGroup{}
 		// results        []*models.ResultData
 		resultDataChan = make(chan *models.ResultData)
-		errorsChan     = make(chan error)
+		errorsChan     = make(chan error, 1)
 		// results        = make(map[string][]*models.ResultData)
 	)
 
@@ -62,5 +62,53 @@ func main() {
 		close(errors)
 	}(resultDataChan, errorsChan)
 
+	go func(results chan *models.ResultData, errors chan error) {
+		for {
+			select {
+			case res := <-resultDataChan:
+				if res != nil {
+					fmt.Println(res)
+				}
+			case err := <-errorsChan:
+				if err != nil {
+					fmt.Println(err)
+				}
+			}
+		}
+	}(resultDataChan, errorsChan)
+	// collector.End <- true
+	// L:
+	// for {
+	// 	var (
+	// 		resEmpty bool
+	// 		errEmpty bool
+	// 	)
+	// 	select {
+	// 	case res := <-resultDataChan:
+	// 		if res != nil {
+	// 			results = append(results, res)
+	// 			fmt.Println(res)
+	// 		} else {
+	// 			resEmpty = true
+	// 		}
+	// 	case err := <-errorsChan:
+	// 		if err != nil {
+	// 			fmt.Println(err)
+	// 		} else {
+	// 			errEmpty = true
+	// 		}
+	// 	}
+
+	// 	if resEmpty && errEmpty {
+	// 		break L
+	// 	}
+	// }
 	fmt.Println("Finished")
+	// for category, results := range results {
+	// 	path, saveErr := recordFile.SaveResults(*resultsDir, *resultExt, category, results)
+	// 	if saveErr != nil {
+	// 		log.Fatal(saveErr)
+	// 	}
+	// 	log.Printf("Path for %s category: %s", category, path)
+	// }
 }

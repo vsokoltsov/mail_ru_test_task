@@ -31,7 +31,6 @@ type RecordFile struct {
 }
 
 func NewRecordFile(
-	collector *worker.Collector,
 	handler handler.HandlerInt,
 	wg *sync.WaitGroup,
 	resultsChan chan *models.ResultData,
@@ -41,7 +40,6 @@ func NewRecordFile(
 	jobs chan models.Job,
 	results chan models.Result) RecordInt {
 	return RecordFile{
-		collector:   collector,
 		handler:     handler,
 		resultsChan: resultsChan,
 		errorsChan:  errorsChan,
@@ -74,8 +72,8 @@ func (rf RecordFile) ReadLines(file *os.File) error {
 		counter int
 	)
 
+	rf.wg.Add(rf.goNum)
 	for i := 0; i < rf.goNum; i++ {
-		rf.wg.Add(1)
 		go func(i int, wg *sync.WaitGroup, rf *RecordFile) {
 			defer wg.Done()
 			rf.worker(i, rf.jobs, rf.results, rf.wg)
@@ -84,9 +82,10 @@ func (rf RecordFile) ReadLines(file *os.File) error {
 
 	recordWg := &sync.WaitGroup{}
 	go func(file *os.File, counter int, jobs chan models.Job, wg *sync.WaitGroup) {
-		recordWg.Add(1)
-		defer recordWg.Done()
+		// wg.Add(1)
+		// defer wg.Done()
 		scanner := bufio.NewScanner(file)
+		var writesNum int
 		for scanner.Scan() {
 			bytes := scanner.Bytes()
 			record, decodeError := rf.decodeLine(bytes)
@@ -96,35 +95,35 @@ func (rf RecordFile) ReadLines(file *os.File) error {
 
 			counter++
 			if len(record.Categories) > 0 {
+				writesNum++
 				jobs <- models.Job{Record: record}
+				fmt.Println("Number of writes: ", writesNum)
 			}
 		}
 
+		close(jobs)
 		if scannerErr := scanner.Err(); scannerErr != nil {
 			// return scannerErr
 		}
+		// close(jobs)
 	}(file, counter, rf.jobs, recordWg)
-	recordWg.Wait()
-
-	go func(wg *sync.WaitGroup, recordWg *sync.WaitGroup, results chan models.Result, jobs chan models.Job) {
-		wg.Wait()
-		// recordWg.Wait()
-		close(results)
-		close(jobs)
-	}(rf.wg, recordWg, rf.results, rf.jobs)
-
 	// recordWg.Wait()
-	fmt.Printf("Readed %d lines", counter)
-	// close(rf.results)
-	// reqNum := 0
-	// for r := range rf.results {
-	// 	reqNum++
-	// 	if r.Err != nil {
-	// 		fmt.Println("Error: ", r.Err)
-	// 	} else {
-	// 		fmt.Println("Worker ID:", r.WorkerID, "Result: ", r.Result.URL)
-	// 	}
-	// }
+
+	go func(wg *sync.WaitGroup, results chan models.Result) {
+		wg.Wait()
+		close(results)
+	}(rf.wg, rf.results)
+
+	// rf.wg.Wait()
+	// recordWg.Wait()
+	// go func(wg *sync.WaitGroup, recordWg *sync.WaitGroup, results chan models.Result, jobs chan models.Job) {
+	// 	defer close(results)
+	// 	wg.Wait()
+	// 	// recordWg.Wait()
+
+	// 	close(jobs)
+	// 	// close(results)
+	// }(rf.wg, recordWg, rf.results, rf.jobs)
 	return nil
 }
 func (rf RecordFile) decodeLine(bytes []byte) (*models.Record, error) {

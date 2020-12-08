@@ -9,7 +9,6 @@ import (
 	"relap/pkg/models"
 	"relap/pkg/repositories/handler"
 	"relap/pkg/repositories/storage"
-	"relap/pkg/repositories/worker"
 	"strings"
 	"sync"
 	"time"
@@ -18,7 +17,6 @@ import (
 var counterCalls int
 
 type RecordFile struct {
-	collector   *worker.Collector
 	handler     handler.HandlerInt
 	wg          *sync.WaitGroup
 	resultsChan chan *models.ResultData
@@ -72,14 +70,6 @@ func (rf RecordFile) ReadLines(file *os.File) error {
 		counter int
 	)
 
-	rf.wg.Add(rf.goNum)
-	for i := 0; i < rf.goNum; i++ {
-		go func(i int, wg *sync.WaitGroup, rf *RecordFile) {
-			defer wg.Done()
-			rf.worker(i, rf.jobs, rf.results, rf.wg)
-		}(i, rf.wg, &rf)
-	}
-
 	recordWg := &sync.WaitGroup{}
 	go func(file *os.File, counter int, jobs chan models.Job, wg *sync.WaitGroup) {
 		// wg.Add(1)
@@ -114,16 +104,6 @@ func (rf RecordFile) ReadLines(file *os.File) error {
 		close(results)
 	}(rf.wg, rf.results)
 
-	// rf.wg.Wait()
-	// recordWg.Wait()
-	// go func(wg *sync.WaitGroup, recordWg *sync.WaitGroup, results chan models.Result, jobs chan models.Job) {
-	// 	defer close(results)
-	// 	wg.Wait()
-	// 	// recordWg.Wait()
-
-	// 	close(jobs)
-	// 	// close(results)
-	// }(rf.wg, recordWg, rf.results, rf.jobs)
 	return nil
 }
 func (rf RecordFile) decodeLine(bytes []byte) (*models.Record, error) {

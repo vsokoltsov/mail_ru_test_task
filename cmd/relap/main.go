@@ -10,6 +10,7 @@ import (
 	"relap/pkg/repositories/handler"
 	"relap/pkg/repositories/record"
 	"relap/pkg/repositories/storage"
+	"relap/pkg/repositories/worker"
 	"sync"
 )
 
@@ -40,6 +41,13 @@ func main() {
 		jobs,
 		results,
 	)
+	workersPool := worker.NewWorkersPool(
+		*goNum,
+		htmlHandler,
+		wg,
+		jobs,
+		results,
+	)
 
 	absPath, filePathErr := filepath.Abs(*path)
 	if filePathErr != nil {
@@ -50,6 +58,8 @@ func main() {
 		log.Fatal(fileErr)
 	}
 	defer file.Close()
+
+	workersPool.StartWorkers()
 
 	readErr := recordFile.ReadLines(file)
 	if readErr != nil {

@@ -84,6 +84,8 @@ func (rf RecordFile) ReadLines(file *os.File) error {
 
 	recordWg := &sync.WaitGroup{}
 	go func(file *os.File, counter int, jobs chan models.Job, wg *sync.WaitGroup) {
+		recordWg.Add(1)
+		defer recordWg.Done()
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
 			bytes := scanner.Bytes()
@@ -102,7 +104,7 @@ func (rf RecordFile) ReadLines(file *os.File) error {
 			// return scannerErr
 		}
 	}(file, counter, rf.jobs, recordWg)
-	// recordWg.Wait()
+	recordWg.Wait()
 
 	go func(wg *sync.WaitGroup, recordWg *sync.WaitGroup, results chan models.Result, jobs chan models.Job) {
 		wg.Wait()

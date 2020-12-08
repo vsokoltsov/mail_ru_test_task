@@ -1,10 +1,12 @@
 package worker
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"relap/pkg/models"
 	"relap/pkg/repositories/handler"
+	"sync"
 	"time"
 )
 
@@ -22,11 +24,18 @@ type Worker struct {
 	Errors        chan error
 	client        *http.Client
 	handler       handler.HandlerInt
+	wg            *sync.WaitGroup
 }
 
 func NewWorker(
 	id int,
-	workerChannel chan chan Work, channel chan Work, end chan bool, handler handler.HandlerInt, results chan *models.ResultData, errorsChan chan error) *Worker {
+	workerChannel chan chan Work,
+	channel chan Work,
+	end chan bool,
+	handler handler.HandlerInt,
+	results chan *models.ResultData,
+	errorsChan chan error,
+	wg *sync.WaitGroup) *Worker {
 	return &Worker{
 		ID:            id,
 		Channel:       channel,
@@ -38,6 +47,7 @@ func NewWorker(
 		client: &http.Client{
 			Timeout: 10 * time.Second,
 		},
+		wg: wg,
 	}
 }
 
@@ -47,13 +57,15 @@ func (w *Worker) Start() {
 			w.WorkerChannel <- w.Channel
 			select {
 			case work := <-w.Channel:
-				result, fetchErr := w.fetchPage(work.ID, work.Record)
-				if fetchErr != nil {
-					w.Errors <- fetchErr
-				} else {
-					w.ResultData <- result
-				}
+				result, _ := w.fetchPage(work.ID, work.Record)
+				fmt.Println(result)
+				// if fetchErr != nil {
+				// 	w.Errors <- fetchErr
+				// } else {
+				w.ResultData <- result
+				// }
 			case <-w.End:
+				w.wg.Done()
 				return
 			}
 		}

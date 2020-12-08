@@ -4,6 +4,7 @@ import (
 	"log"
 	"relap/pkg/models"
 	"relap/pkg/repositories/handler"
+	"sync"
 )
 
 var WorkerChannel = make(chan chan Work)
@@ -13,7 +14,7 @@ type Collector struct {
 	End  chan bool
 }
 
-func StartDispatcher(workerCount int, handler handler.HandlerInt, resultsChan chan *models.ResultData, errorsChan chan error) Collector {
+func StartDispatcher(workerCount int, handler handler.HandlerInt, resultsChan chan *models.ResultData, errorsChan chan error, wg *sync.WaitGroup) Collector {
 	var i int
 	var workers []*Worker
 	input := make(chan Work)
@@ -22,7 +23,8 @@ func StartDispatcher(workerCount int, handler handler.HandlerInt, resultsChan ch
 
 	for i = 1; i <= workerCount; i++ {
 		log.Println("starting worker: ", i)
-		worker := NewWorker(i, WorkerChannel, make(chan Work), make(chan bool), handler, resultsChan, errorsChan)
+		worker := NewWorker(i, WorkerChannel, make(chan Work), make(chan bool), handler, resultsChan, errorsChan, wg)
+		wg.Add(1)
 		worker.Start()
 		workers = append(workers, worker)
 	}

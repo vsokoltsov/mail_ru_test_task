@@ -26,6 +26,8 @@ type RecordFile struct {
 	goNum       int
 	storage     storage.StorageInt
 	client      *http.Client
+	jobs        chan models.Job
+	results     chan models.Result
 }
 
 func NewRecordFile(
@@ -35,7 +37,9 @@ func NewRecordFile(
 	resultsChan chan *models.ResultData,
 	errorsChan chan error,
 	goNum int,
-	storage storage.StorageInt) RecordInt {
+	storage storage.StorageInt,
+	jobs chan models.Job,
+	results chan models.Result) RecordInt {
 	return RecordFile{
 		collector:   collector,
 		handler:     handler,
@@ -44,9 +48,24 @@ func NewRecordFile(
 		goNum:       goNum,
 		wg:          wg,
 		storage:     storage,
+		jobs:        jobs,
+		results:     results,
 		client: &http.Client{
 			Timeout: 10 * time.Second,
 		},
+	}
+}
+
+func (rf RecordFile) worker(id int, jobs <-chan models.Job, results chan<- models.Result, wg *sync.WaitGroup) {
+	for j := range jobs {
+		var result models.Result
+		resultData, err := rf.fetchPage(j.Record.URL, j.Record.Categories)
+		if err != nil {
+			result.Err = err
+		}
+		result.Result = resultData
+		result.WorkerID = id
+		results <- result
 	}
 }
 
@@ -55,28 +74,55 @@ func (rf RecordFile) ReadLines(file *os.File) error {
 		counter int
 	)
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		bytes := scanner.Bytes()
-		record, decodeError := rf.decodeLine(bytes)
-		if decodeError != nil {
-			return decodeError
-		}
-
-		counter++
-		if len(record.Categories) > 0 {
-			rf.collector.Work <- worker.Work{Record: record, ID: counter}
-		}
+	for i := 0; i < rf.goNum; i++ {
+		rf.wg.Add(1)
+		go func(i int, wg *sync.WaitGroup, rf *RecordFile) {
+			defer wg.Done()
+			rf.worker(i, rf.jobs, rf.results, rf.wg)
+		}(i, rf.wg, &rf)
 	}
 
-	if scannerErr := scanner.Err(); scannerErr != nil {
-		return scannerErr
-	}
+	recordWg := &sync.WaitGroup{}
+	go func(file *os.File, counter int, jobs chan models.Job, wg *sync.WaitGroup) {
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			bytes := scanner.Bytes()
+			record, decodeError := rf.decodeLine(bytes)
+			if decodeError != nil {
+				// return decodeError
+			}
 
-	go func(workChan chan worker.Work) {
-		close(workChan)
-	}(rf.collector.Work)
+			counter++
+			if len(record.Categories) > 0 {
+				jobs <- models.Job{Record: record}
+			}
+		}
+
+		if scannerErr := scanner.Err(); scannerErr != nil {
+			// return scannerErr
+		}
+	}(file, counter, rf.jobs, recordWg)
+	// recordWg.Wait()
+
+	go func(wg *sync.WaitGroup, recordWg *sync.WaitGroup, results chan models.Result, jobs chan models.Job) {
+		wg.Wait()
+		// recordWg.Wait()
+		close(results)
+		close(jobs)
+	}(rf.wg, recordWg, rf.results, rf.jobs)
+
+	// recordWg.Wait()
 	fmt.Printf("Readed %d lines", counter)
+	// close(rf.results)
+	// reqNum := 0
+	// for r := range rf.results {
+	// 	reqNum++
+	// 	if r.Err != nil {
+	// 		fmt.Println("Error: ", r.Err)
+	// 	} else {
+	// 		fmt.Println("Worker ID:", r.WorkerID, "Result: ", r.Result.URL)
+	// 	}
+	// }
 	return nil
 }
 func (rf RecordFile) decodeLine(bytes []byte) (*models.Record, error) {

@@ -24,6 +24,8 @@ func main() {
 		// results        []*models.ResultData
 		resultDataChan = make(chan *models.ResultData)
 		errorsChan     = make(chan error, 1)
+		jobs           = make(chan models.Job)
+		results        = make(chan models.Result)
 		// results        = make(map[string][]*models.ResultData)
 	)
 
@@ -31,7 +33,7 @@ func main() {
 
 	fs := storage.NewFileStorage()
 	htmlHandler := handler.NewHandlerHTML()
-	collector := worker.StartDispatcher(*goNum, htmlHandler, resultDataChan, errorsChan)
+	collector := worker.StartDispatcher(*goNum, htmlHandler, resultDataChan, errorsChan, wg)
 	recordFile := record.NewRecordFile(
 		&collector,
 		htmlHandler,
@@ -40,6 +42,8 @@ func main() {
 		errorsChan,
 		*goNum,
 		fs,
+		jobs,
+		results,
 	)
 
 	absPath, filePathErr := filepath.Abs(*path)
@@ -57,25 +61,36 @@ func main() {
 		log.Fatal(readErr)
 	}
 
-	go func(results chan *models.ResultData, errors chan error) {
-		close(results)
-		close(errors)
-	}(resultDataChan, errorsChan)
-
-	go func(results chan *models.ResultData, errors chan error) {
-		for {
-			select {
-			case res := <-resultDataChan:
-				if res != nil {
-					fmt.Println(res)
-				}
-			case err := <-errorsChan:
-				if err != nil {
-					fmt.Println(err)
-				}
-			}
+	reqNum := 0
+	for r := range results {
+		reqNum++
+		if r.Err != nil {
+			fmt.Println("Error: ", r.Err)
+		} else {
+			fmt.Println("Worker ID:", r.WorkerID, "Result: ", r.Result.URL)
 		}
-	}(resultDataChan, errorsChan)
+		fmt.Println(reqNum)
+	}
+
+	// go func(results chan *models.ResultData, errors chan error) {
+	// 	close(results)
+	// 	close(errors)
+	// }(resultDataChan, errorsChan)
+
+	// go func(results chan *models.ResultData, errors chan error) {
+	// 	for {
+	// 		select {
+	// 		case res := <-resultDataChan:
+	// 			if res != nil {
+	// 				fmt.Println(res)
+	// 			}
+	// 		case err := <-errorsChan:
+	// 			if err != nil {
+	// 				fmt.Println(err)
+	// 			}
+	// 		}
+	// 	}
+	// }(resultDataChan, errorsChan)
 	// collector.End <- true
 	// L:
 	// for {

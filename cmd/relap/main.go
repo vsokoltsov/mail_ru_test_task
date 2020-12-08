@@ -19,12 +19,10 @@ func main() {
 		path = flag.String("file", "./../../500.jsonl", "Path to a file")
 		// resultsDir     = flag.String("results", "./../../results/", "Folder with result files.")
 		// resultExt      = flag.String("ext", "tsv", "Extension of the resulting file.")
-		goNum          = flag.Int("go-num", 25, "Number of pages per goroutines")
-		wg             = &sync.WaitGroup{}
-		resultDataChan = make(chan *models.ResultData)
-		errorsChan     = make(chan error, 1)
-		jobs           = make(chan models.Job)
-		results        = make(chan models.Result)
+		goNum   = flag.Int("go-num", 25, "Number of pages per goroutines")
+		wg      = &sync.WaitGroup{}
+		jobs    = make(chan models.Job)
+		results = make(chan models.Result)
 	)
 
 	flag.Parse()
@@ -32,11 +30,7 @@ func main() {
 	fs := storage.NewFileStorage()
 	htmlHandler := handler.NewHandlerHTML()
 	recordFile := record.NewRecordFile(
-		htmlHandler,
 		wg,
-		resultDataChan,
-		errorsChan,
-		*goNum,
 		fs,
 		jobs,
 		results,

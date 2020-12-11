@@ -26,7 +26,7 @@ func TestStorageOpenFile(t *testing.T) {
 		t.Errorf("Error of creating the file: %s", err)
 	}
 
-	_, oErr := storage.OpenFile("./test")
+	_, oErr := storage.OpenFile("./test", os.O_RDONLY, 0644)
 	if err != nil {
 		t.Errorf("Error of opening fle: %s", oErr)
 	}

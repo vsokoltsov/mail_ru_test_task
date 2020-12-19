@@ -18,18 +18,21 @@ type RecordFile struct {
 	storage storage.StorageInt
 	jobs    chan models.Job
 	results chan models.Result
+	errors  chan error
 }
 
 func NewRecordFile(
 	wg *sync.WaitGroup,
 	storage storage.StorageInt,
 	jobs chan models.Job,
-	results chan models.Result) RecordInt {
+	results chan models.Result,
+	errors chan error) RecordInt {
 	return RecordFile{
 		wg:      wg,
 		storage: storage,
 		jobs:    jobs,
 		results: results,
+		errors:  errors,
 	}
 }
 
@@ -39,16 +42,18 @@ func (rf RecordFile) ReadLines(file *os.File) error {
 	)
 
 	recordWg := &sync.WaitGroup{}
-	go func(file *os.File, counter int, jobs chan models.Job, wg *sync.WaitGroup) {
-		// wg.Add(1)
-		// defer wg.Done()
+	go func(file *os.File, counter int, jobs chan models.Job, errors chan error, wg *sync.WaitGroup) {
+		defer close(jobs)
+		defer close(errors)
+
 		scanner := bufio.NewScanner(file)
 		var writesNum int
 		for scanner.Scan() {
 			bytes := scanner.Bytes()
 			record, decodeError := rf.decodeLine(bytes)
 			if decodeError != nil {
-				// return decodeError
+				errors <- decodeError
+				break
 			}
 
 			counter++
@@ -58,13 +63,10 @@ func (rf RecordFile) ReadLines(file *os.File) error {
 			}
 		}
 
-		close(jobs)
 		if scannerErr := scanner.Err(); scannerErr != nil {
-			// return scannerErr
+			errors <- scannerErr
 		}
-		// close(jobs)
-	}(file, counter, rf.jobs, recordWg)
-	// recordWg.Wait()
+	}(file, counter, rf.jobs, rf.errors, recordWg)
 
 	go func(wg *sync.WaitGroup, results chan models.Result) {
 		wg.Wait()

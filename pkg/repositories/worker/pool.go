@@ -1,8 +1,10 @@
 package worker
 
 import (
+	"os"
 	"relap/pkg/models"
 	"relap/pkg/repositories/handler"
+	"strings"
 	"sync"
 )
 
@@ -13,6 +15,22 @@ type WorkersPool struct {
 	wg         *sync.WaitGroup
 	jobs       chan models.Job
 	results    chan models.Result
+}
+
+type WorkersWritePool struct {
+	workersNum int
+	jobs       chan models.CategoryJob
+	results    chan *os.File
+	wg         *sync.WaitGroup
+}
+
+func NewWorkersWritePool(workersNum int, jobs chan models.CategoryJob, results chan *os.File, wg *sync.WaitGroup) *WorkersWritePool {
+	return &WorkersWritePool{
+		workersNum: workersNum,
+		jobs:       jobs,
+		results:    results,
+		wg:         wg,
+	}
 }
 
 func NewWorkersPool(
@@ -53,6 +71,25 @@ func (wp WorkersPool) StartWorkers() {
 			defer wp.wg.Done()
 			wp.listenJobs(i, wp.jobs, wp.results)
 		}(i, &wp)
+	}
+}
+
+func (wwp *WorkersWritePool) StartWorkers() {
+	wwp.wg.Add(wwp.workersNum)
+	for i := 0; i < wwp.workersNum; i++ {
+		go func(i int, wwp *WorkersWritePool) {
+			defer wwp.wg.Done()
+			wwp.ListenWriteJobs(i, wwp.jobs, wwp.results)
+		}(i, wwp)
+	}
+}
+
+func (wwp *WorkersWritePool) ListenWriteJobs(id int, jobs <-chan models.CategoryJob, results chan<- *os.File) {
+	for j := range jobs {
+		for _, fd := range j.ResultsData {
+			j.File.WriteString(strings.Join([]string{fd.URL, fd.Title, fd.Description, "\n"}, " "))
+		}
+		results <- j.File
 	}
 }
 

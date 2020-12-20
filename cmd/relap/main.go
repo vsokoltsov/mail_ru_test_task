@@ -24,6 +24,8 @@ func main() {
 		jobs       = make(chan models.Job)
 		results    = make(chan models.Result)
 		errors     = make(chan error)
+
+		fileJobs = make(chan models.CategoryJob)
 	)
 
 	flag.Parse()
@@ -62,23 +64,57 @@ func main() {
 		log.Fatal(readErr)
 	}
 
-	// TODO: Group data and write to files
-
 	categoryRecords := readFromChannles(results, errors)
-
-	writeWg := &sync.WaitGroup{}
-	for category, records := range categoryRecords {
-		writeWg.Add(1)
-		go func(dir, ext, category string, records []*models.ResultData, wg *sync.WaitGroup, recordFile record.RecordInt) {
-			defer wg.Done()
-			recordFile.SaveResults(dir, ext, category, records)
-			// recordFile.SaveResults(*resultsDir, *resultExt, category, records)
-		}(*resultsDir, *resultExt, category, records, writeWg, recordFile)
+	categoryFiles := make(map[string]*os.File)
+	for category := range categoryRecords {
+		p := filepath.Join(*resultsDir, category+"."+*resultExt)
+		categoryAbsPath, categoryFilePathErr := filepath.Abs(p)
+		if categoryFilePathErr != nil {
+			log.Fatalf("Absolute path error: %s", filePathErr)
+		}
+		categoryFile, categoryFileErr := fs.CreateFile(categoryAbsPath)
+		if categoryFileErr != nil {
+			log.Fatalf("Error creating file for category: %s", categoryFileErr)
+		}
+		_, ok := categoryFiles[category]
+		if !ok {
+			categoryFiles[category] = categoryFile
+		}
 	}
-	writeWg.Done()
 
-	fmt.Println(categoryRecords)
-	fmt.Println("Finished")
+	fileResults := make(chan *os.File, len(categoryFiles))
+	writeWg := &sync.WaitGroup{}
+	writePool := worker.NewWorkersWritePool(
+		len(categoryRecords),
+		fileJobs,
+		fileResults,
+		writeWg,
+	)
+	writePool.StartWorkers()
+
+	go func() {
+		for category, f := range categoryFiles {
+			records := categoryRecords[category]
+			fileJobs <- models.CategoryJob{
+				File:        f,
+				Category:    category,
+				ResultsData: records,
+			}
+		}
+		close(fileJobs)
+	}()
+
+	go func(wg *sync.WaitGroup, writeJobs chan models.CategoryJob, results chan *os.File) {
+		wg.Wait()
+		close(results)
+	}(writeWg, fileJobs, fileResults)
+
+	for fr := range fileResults {
+		fmt.Println(fr.Name())
+		fr.Close()
+	}
+
+	log.Println("Finished")
 }
 
 func readFromChannles(results chan models.Result, errors chan error) map[string][]*models.ResultData {

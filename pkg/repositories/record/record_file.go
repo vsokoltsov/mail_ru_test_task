@@ -37,12 +37,8 @@ func NewRecordFile(
 }
 
 func (rf RecordFile) ReadLines(file *os.File) error {
-	var (
-		counter int
-	)
-
 	recordWg := &sync.WaitGroup{}
-	go func(file *os.File, counter int, jobs chan models.Job, errors chan error, wg *sync.WaitGroup) {
+	go func(file *os.File, jobs chan models.Job, errors chan error, wg *sync.WaitGroup) {
 		defer close(jobs)
 		defer close(errors)
 
@@ -56,7 +52,6 @@ func (rf RecordFile) ReadLines(file *os.File) error {
 				break
 			}
 
-			counter++
 			if len(record.Categories) > 0 {
 				writesNum++
 				jobs <- models.Job{Record: record}
@@ -66,7 +61,7 @@ func (rf RecordFile) ReadLines(file *os.File) error {
 		if scannerErr := scanner.Err(); scannerErr != nil {
 			errors <- scannerErr
 		}
-	}(file, counter, rf.jobs, rf.errors, recordWg)
+	}(file, rf.jobs, rf.errors, recordWg)
 
 	go func(wg *sync.WaitGroup, results chan models.Result) {
 		wg.Wait()
@@ -75,6 +70,7 @@ func (rf RecordFile) ReadLines(file *os.File) error {
 
 	return nil
 }
+
 func (rf RecordFile) decodeLine(bytes []byte) (*models.Record, error) {
 	var record models.Record
 	if unmarshalErr := json.Unmarshal(bytes, &record); unmarshalErr != nil {

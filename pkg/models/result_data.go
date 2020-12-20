@@ -1,7 +1,15 @@
 package models
 
+import "os"
+
 type Job struct {
 	Record *Record
+}
+
+type CategoryJob struct {
+	Category    string
+	ResultsData []*ResultData
+	File        *os.File
 }
 
 type Result struct {

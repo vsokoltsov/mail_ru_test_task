@@ -1,10 +1,19 @@
 package worker
 
-import "relap/pkg/models"
+import (
+	"os"
+	"relap/pkg/models"
+)
 
-type WorkersPoolInt interface {
+type WorkersReadPoolInt interface {
 	StartWorkers()
+	ReadFromChannels(results chan models.Result, errors chan error) map[string][]*models.ResultData
 	listenJobs(id int, jobs <-chan models.Job, results chan<- models.Result)
+}
+
+type WorkersWritePoolInt interface {
+	StartWorkers()
+	ListenWriteJobs(id int, jobs <-chan models.CategoryJob, results chan<- *os.File)
 }
 
 type WorkerInt interface {

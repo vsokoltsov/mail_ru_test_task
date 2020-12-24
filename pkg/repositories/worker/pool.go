@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"log"
 	"os"
 	"relap/pkg/models"
 	"relap/pkg/repositories/handler"
@@ -8,7 +9,7 @@ import (
 	"sync"
 )
 
-type WorkersPool struct {
+type WorkersReadPool struct {
 	workersNum int
 	handler    handler.HandlerInt
 	worker     WorkerInt
@@ -24,8 +25,8 @@ type WorkersWritePool struct {
 	wg         *sync.WaitGroup
 }
 
-func NewWorkersWritePool(workersNum int, jobs chan models.CategoryJob, results chan *os.File, wg *sync.WaitGroup) *WorkersWritePool {
-	return &WorkersWritePool{
+func NewWorkersWritePool(workersNum int, jobs chan models.CategoryJob, results chan *os.File, wg *sync.WaitGroup) WorkersWritePoolInt {
+	return WorkersWritePool{
 		workersNum: workersNum,
 		jobs:       jobs,
 		results:    results,
@@ -33,13 +34,13 @@ func NewWorkersWritePool(workersNum int, jobs chan models.CategoryJob, results c
 	}
 }
 
-func NewWorkersPool(
+func NewWorkersReadPool(
 	workersNum int,
 	handler handler.HandlerInt,
 	wg *sync.WaitGroup,
 	jobs chan models.Job,
-	results chan models.Result) WorkersPoolInt {
-	return WorkersPool{
+	results chan models.Result) WorkersReadPoolInt {
+	return WorkersReadPool{
 		workersNum: workersNum,
 		handler:    handler,
 		wg:         wg,
@@ -48,7 +49,7 @@ func NewWorkersPool(
 	}
 }
 
-func (wp WorkersPool) listenJobs(id int, jobs <-chan models.Job, results chan<- models.Result) {
+func (wp WorkersReadPool) listenJobs(id int, jobs <-chan models.Job, results chan<- models.Result) {
 	for j := range jobs {
 		var (
 			result models.Result
@@ -64,27 +65,27 @@ func (wp WorkersPool) listenJobs(id int, jobs <-chan models.Job, results chan<- 
 	}
 }
 
-func (wp WorkersPool) StartWorkers() {
+func (wp WorkersReadPool) StartWorkers() {
 	wp.wg.Add(wp.workersNum)
 	for i := 0; i < wp.workersNum; i++ {
-		go func(i int, wp *WorkersPool) {
+		go func(i int, wp *WorkersReadPool) {
 			defer wp.wg.Done()
 			wp.listenJobs(i, wp.jobs, wp.results)
 		}(i, &wp)
 	}
 }
 
-func (wwp *WorkersWritePool) StartWorkers() {
+func (wwp WorkersWritePool) StartWorkers() {
 	wwp.wg.Add(wwp.workersNum)
 	for i := 0; i < wwp.workersNum; i++ {
-		go func(i int, wwp *WorkersWritePool) {
+		go func(i int, wwp WorkersWritePool) {
 			defer wwp.wg.Done()
 			wwp.ListenWriteJobs(i, wwp.jobs, wwp.results)
 		}(i, wwp)
 	}
 }
 
-func (wwp *WorkersWritePool) ListenWriteJobs(id int, jobs <-chan models.CategoryJob, results chan<- *os.File) {
+func (wwp WorkersWritePool) ListenWriteJobs(id int, jobs <-chan models.CategoryJob, results chan<- *os.File) {
 	for j := range jobs {
 		for _, fd := range j.ResultsData {
 			j.File.WriteString(strings.Join([]string{fd.URL, fd.Title, fd.Description, "\n"}, " "))
@@ -93,27 +94,35 @@ func (wwp *WorkersWritePool) ListenWriteJobs(id int, jobs <-chan models.Category
 	}
 }
 
-// func (wp WorkersPool) fetchPage(url string, categories []string) (*models.ResultData, error) {
-// 	resp, respErr := wp.client.Get(url)
-// 	if respErr != nil {
-// 		return nil, respErr
-// 	}
-// 	defer resp.Body.Close()
-
-// 	if resp.StatusCode == http.StatusNotFound {
-// 		data := &models.ResultData{
-// 			Title:       "Not Found",
-// 			Description: "Not Found",
-// 			URL:         url,
-// 			Categories:  categories,
-// 		}
-// 		return data, nil
-// 	}
-// 	resultData, resultErr := wp.handler.Parse(resp.Body)
-// 	if resultErr != nil {
-// 		return nil, resultErr
-// 	}
-// 	resultData.URL = url
-// 	resultData.Categories = categories
-// 	return resultData, nil
-// }
+func (wp WorkersReadPool) ReadFromChannels(results chan models.Result, errors chan error) map[string][]*models.ResultData {
+	categoryRecords := make(map[string][]*models.ResultData)
+READ:
+	for {
+		select {
+		case r, ok := <-results:
+			if !ok {
+				break READ
+			}
+			if r.Err != nil {
+				log.Printf("Error: %s", r.Err)
+			} else {
+				log.Printf("URL: %s; Title: %s; Description: %s", r.Result.URL, r.Result.Title, r.Result.Description)
+				for _, category := range r.Result.Categories {
+					_, ok := categoryRecords[category]
+					if ok {
+						categoryRecords[category] = append(categoryRecords[category], r.Result)
+					} else {
+						categoryRecords[category] = []*models.ResultData{
+							r.Result,
+						}
+					}
+				}
+			}
+		case errChan := <-errors:
+			if errChan != nil {
+				log.Fatalf("Error file reading: %s", errChan.Error())
+			}
+		}
+	}
+	return categoryRecords
+}

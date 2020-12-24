@@ -7,7 +7,6 @@ import (
 	"os"
 	"relap/pkg/models"
 	"relap/pkg/repositories/storage"
-	"strings"
 	"sync"
 )
 
@@ -77,31 +76,4 @@ func (rf RecordFile) decodeLine(bytes []byte) (*models.Record, error) {
 		return nil, fmt.Errorf("Error of record unmarshalling: %s", unmarshalErr)
 	}
 	return &record, nil
-}
-
-func (rf RecordFile) SaveResults(dir, ext, categoryName string, results []*models.ResultData) (string, error) {
-	var (
-		f       *os.File
-		fileErr error
-	)
-
-	path := rf.storage.ResultPath(dir, categoryName, ext)
-	if _, err := os.Stat(path); err == nil {
-		f, fileErr = rf.storage.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0644)
-	} else {
-		f, fileErr = rf.storage.CreateFile(path)
-	}
-	defer f.Close()
-
-	if fileErr != nil {
-		return "", fileErr
-	}
-
-	for _, fd := range results {
-		f.Write([]byte(strings.Join([]string{fd.URL, fd.Title, fd.Description, "\n"}, " ")))
-	}
-
-	f.Sync()
-
-	return path, nil
 }

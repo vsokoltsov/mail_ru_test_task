@@ -124,7 +124,10 @@ READ:
 					}
 				}
 			}
-		case errChan := <-errors:
+		case errChan, ok := <-errors:
+			if !ok {
+				break READ
+			}
 			if errChan != nil {
 				return nil, errChan
 			}

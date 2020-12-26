@@ -157,13 +157,16 @@ func TestWorkersReadPoolSuccessReadFromChannels(t *testing.T) {
 func TestWorkersReadPoolFailedReadFromChannels(t *testing.T) {
 	var (
 		ctrl    = gomock.NewController(t)
-		jobs    = make(chan models.Job, 1)
-		results = make(chan models.Result)
+		jobs    = make(chan models.Job)
+		results = make(chan models.Result, 1)
 		wg      = &sync.WaitGroup{}
 		wrkr    = NewMockInt(ctrl)
 		pool    = NewWorkersReadPool(1, wg, jobs, results, wrkr)
 		err     = make(chan error, 1)
 	)
+	results <- models.Result{
+		Err: fmt.Errorf("Error data"),
+	}
 	err <- fmt.Errorf("Chan error")
 	close(results)
 	close(err)

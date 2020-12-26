@@ -8,13 +8,16 @@ import (
 	"golang.org/x/net/html"
 )
 
-type HandlerHtml struct{}
+// HTML implements handler.Int interface
+type HTML struct{}
 
-func NewHandlerHTML() HandlerInt {
-	return &HandlerHtml{}
+// NewHTML returns new HTML instance
+func NewHTML() Int {
+	return &HTML{}
 }
 
-func (hh *HandlerHtml) extractMetaProperty(t html.Token, prop string) (content string, ok bool) {
+// extractMetaProperty extracts attributes based on parameters
+func (hh *HTML) extractMetaProperty(t html.Token, prop string) (content string, ok bool) {
 	for _, attr := range t.Attr {
 		if attr.Key == "name" && attr.Val == prop {
 			ok = true
@@ -28,7 +31,8 @@ func (hh *HandlerHtml) extractMetaProperty(t html.Token, prop string) (content s
 	return
 }
 
-func (hh *HandlerHtml) Parse(body io.ReadCloser) (*models.ResultData, error) {
+// Parse parsed give html page
+func (hh *HTML) Parse(body io.ReadCloser) (*models.ResultData, error) {
 	result := models.ResultData{}
 	tokenizer := html.NewTokenizer(body)
 	for {

@@ -10,11 +10,11 @@ import (
 // Worker represents worker info
 type Worker struct {
 	client  *http.Client
-	handler handler.HandlerInt
+	handler handler.Int
 }
 
 // NewWorker returns structure that implements Int
-func NewWorker(handler handler.HandlerInt) Int {
+func NewWorker(handler handler.Int) Int {
 	return Worker{
 		handler: handler,
 		client: &http.Client{

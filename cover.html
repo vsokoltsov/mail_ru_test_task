@@ -86,13 +86,13 @@ import (
         "golang.org/x/net/html"
 )
 
-type HandlerHtml struct{}
+type HTML struct{}
 
-func NewHandlerHTML() HandlerInt <span class="cov8" title="1">{
-        return &amp;HandlerHtml{}
+func NewHTML() Int <span class="cov8" title="1">{
+        return &amp;HTML{}
 }</span>
 
-func (hh *HandlerHtml) extractMetaProperty(t html.Token, prop string) (content string, ok bool) <span class="cov8" title="1">{
+func (hh *HTML) extractMetaProperty(t html.Token, prop string) (content string, ok bool) <span class="cov8" title="1">{
         for _, attr := range t.Attr </span><span class="cov8" title="1">{
                 if attr.Key == "name" &amp;&amp; attr.Val == prop </span><span class="cov8" title="1">{
                         ok = true
@@ -106,7 +106,7 @@ func (hh *HandlerHtml) extractMetaProperty(t html.Token, prop string) (content s
         <span class="cov8" title="1">return</span>
 }
 
-func (hh *HandlerHtml) Parse(body io.ReadCloser) (*models.ResultData, error) <span class="cov8" title="1">{
+func (hh *HTML) Parse(body io.ReadCloser) (*models.ResultData, error) <span class="cov8" title="1">{
         result := models.ResultData{}
         tokenizer := html.NewTokenizer(body)
         for </span><span class="cov8" title="1">{
@@ -401,11 +401,11 @@ import (
 // Worker represents worker info
 type Worker struct {
         client  *http.Client
-        handler handler.HandlerInt
+        handler handler.Int
 }
 
 // NewWorker returns structure that implements Int
-func NewWorker(handler handler.HandlerInt) Int <span class="cov8" title="1">{
+func NewWorker(handler handler.Int) Int <span class="cov8" title="1">{
         return Worker{
                 handler: handler,
                 client: &amp;http.Client{

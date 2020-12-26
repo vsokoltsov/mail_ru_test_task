@@ -13,7 +13,7 @@ import (
 
 type workerTestCase struct {
 	name           string
-	handler        handler.HandlerInt
+	handler        handler.Int
 	expectErr      bool
 	generateServer func() *httptest.Server
 	url            string

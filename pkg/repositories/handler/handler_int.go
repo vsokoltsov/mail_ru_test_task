@@ -5,6 +5,7 @@ import (
 	"relap/pkg/models"
 )
 
-type HandlerInt interface {
+// Int represents available actions for handler
+type Int interface {
 	Parse(body io.ReadCloser) (*models.ResultData, error)
 }

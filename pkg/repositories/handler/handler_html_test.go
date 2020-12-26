@@ -92,7 +92,7 @@ func TestHandlers(t *testing.T) {
 		t.Run(label, func(t *testing.T) {
 			r := ioutil.NopCloser(bytes.NewReader(tc.html))
 
-			handler := NewHandlerHTML()
+			handler := NewHTML()
 			result, err := handler.Parse(r)
 			if tc.expectedError {
 				if err == nil {

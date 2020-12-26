@@ -31,7 +31,7 @@ func main() {
 	flag.Parse()
 
 	fs := storage.NewFileStorage()
-	htmlHandler := handler.NewHandlerHTML()
+	htmlHandler := handler.NewHTML()
 	File := record.NewFile(
 		wg,
 		fs,

@@ -8,14 +8,12 @@ import (
 )
 
 type Worker struct {
-	ID      int
 	client  *http.Client
 	handler handler.HandlerInt
 }
 
-func NewWorker(id int, handler handler.HandlerInt) WorkerInt {
+func NewWorker(handler handler.HandlerInt) WorkerInt {
 	return Worker{
-		ID:      id,
 		handler: handler,
 		client: &http.Client{
 			Timeout: 10 * time.Second,

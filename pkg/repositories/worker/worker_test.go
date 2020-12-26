@@ -92,7 +92,6 @@ func TestWorker(t *testing.T) {
 			var url string
 			server := tc.generateServer()
 			worker := Worker{
-				ID:      1,
 				client:  server.Client(),
 				handler: tc.handler,
 			}
@@ -112,7 +111,7 @@ func TestWorker(t *testing.T) {
 }
 
 func TestNewWorker(t *testing.T) {
-	w := NewWorker(1, MockSuccessHandler{})
+	w := NewWorker(MockSuccessHandler{})
 	if w == nil {
 		t.Errorf("Initializatio have not happened")
 	}

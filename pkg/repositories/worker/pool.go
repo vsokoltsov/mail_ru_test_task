@@ -4,14 +4,12 @@ import (
 	"log"
 	"os"
 	"relap/pkg/models"
-	"relap/pkg/repositories/handler"
 	"strings"
 	"sync"
 )
 
 type WorkersReadPool struct {
 	workersNum int
-	handler    handler.HandlerInt
 	worker     WorkerInt
 	wg         *sync.WaitGroup
 	jobs       chan models.Job
@@ -36,16 +34,16 @@ func NewWorkersWritePool(workersNum int, jobs chan models.CategoryJob, results c
 
 func NewWorkersReadPool(
 	workersNum int,
-	handler handler.HandlerInt,
 	wg *sync.WaitGroup,
 	jobs chan models.Job,
-	results chan models.Result) WorkersReadPoolInt {
+	results chan models.Result,
+	worker WorkerInt) WorkersReadPoolInt {
 	return WorkersReadPool{
 		workersNum: workersNum,
-		handler:    handler,
 		wg:         wg,
 		jobs:       jobs,
 		results:    results,
+		worker:     worker,
 	}
 }
 
@@ -53,9 +51,8 @@ func (wp WorkersReadPool) listenJobs(id int, jobs <-chan models.Job, results cha
 	for j := range jobs {
 		var (
 			result models.Result
-			worker = NewWorker(id, wp.handler)
 		)
-		resultData, err := worker.FetchPage(j.Record.URL, j.Record.Categories)
+		resultData, err := wp.worker.FetchPage(j.Record.URL, j.Record.Categories)
 		if err != nil {
 			result.Err = err
 		}
@@ -94,7 +91,7 @@ func (wwp WorkersWritePool) ListenWriteJobs(id int, jobs <-chan models.CategoryJ
 	}
 }
 
-func (wp WorkersReadPool) ReadFromChannels(results chan models.Result, errors chan error) map[string][]*models.ResultData {
+func (wp WorkersReadPool) ReadFromChannels(results chan models.Result, errors chan error) (map[string][]*models.ResultData, error) {
 	categoryRecords := make(map[string][]*models.ResultData)
 READ:
 	for {
@@ -120,9 +117,9 @@ READ:
 			}
 		case errChan := <-errors:
 			if errChan != nil {
-				log.Fatalf("Error file reading: %s", errChan.Error())
+				return nil, errChan
 			}
 		}
 	}
-	return categoryRecords
+	return categoryRecords, nil
 }

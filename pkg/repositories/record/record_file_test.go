@@ -18,14 +18,14 @@ func TestSuccessReadLines(t *testing.T) {
 	)
 
 	file, _ := os.Open("./test.jsonl")
-	recordFile := NewRecordFile(
+	File := NewFile(
 		wg,
 		fs,
 		jobs,
 		results,
 		errors,
 	)
-	readErr := recordFile.ReadLines(file)
+	readErr := File.ReadLines(file)
 	if readErr != nil {
 		t.Errorf("ReadLines error: %s", readErr)
 	}
@@ -41,14 +41,14 @@ func TestFailedReadLines(t *testing.T) {
 	)
 
 	file, _ := os.Open("./test_decode_error.jsonl")
-	recordFile := NewRecordFile(
+	File := NewFile(
 		wg,
 		fs,
 		jobs,
 		results,
 		errors,
 	)
-	readErr := recordFile.ReadLines(file)
+	readErr := File.ReadLines(file)
 	if readErr != nil {
 		t.Errorf("ReadLines error: %s", readErr)
 	}

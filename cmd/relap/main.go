@@ -32,7 +32,7 @@ func main() {
 
 	fs := storage.NewFileStorage()
 	htmlHandler := handler.NewHandlerHTML()
-	recordFile := record.NewRecordFile(
+	File := record.NewFile(
 		wg,
 		fs,
 		jobs,
@@ -60,7 +60,7 @@ func main() {
 
 	workersPool.StartWorkers()
 
-	readErr := recordFile.ReadLines(file)
+	readErr := File.ReadLines(file)
 	if readErr != nil {
 		log.Fatal(readErr)
 	}

@@ -163,7 +163,7 @@ import (
 
 var counterCalls int
 
-type RecordFile struct {
+type File struct {
         wg      *sync.WaitGroup
         storage storage.Int
         jobs    chan models.Job
@@ -171,13 +171,13 @@ type RecordFile struct {
         errors  chan error
 }
 
-func NewRecordFile(
+func NewFile(
         wg *sync.WaitGroup,
         storage storage.Int,
         jobs chan models.Job,
         results chan models.Result,
-        errors chan error) RecordInt <span class="cov8" title="1">{
-        return RecordFile{
+        errors chan error) Int <span class="cov8" title="1">{
+        return File{
                 wg:      wg,
                 storage: storage,
                 jobs:    jobs,
@@ -186,7 +186,7 @@ func NewRecordFile(
         }
 }</span>
 
-func (rf RecordFile) ReadLines(file *os.File) error <span class="cov8" title="1">{
+func (rf File) ReadLines(file *os.File) error <span class="cov8" title="1">{
         recordWg := &amp;sync.WaitGroup{}
         go func(file *os.File, jobs chan models.Job, errors chan error, wg *sync.WaitGroup) </span><span class="cov8" title="1">{
                 defer close(jobs)
@@ -221,7 +221,7 @@ func (rf RecordFile) ReadLines(file *os.File) error <span class="cov8" title="1"
         <span class="cov8" title="1">return nil</span>
 }
 
-func (rf RecordFile) decodeLine(bytes []byte) (*models.Record, error) <span class="cov8" title="1">{
+func (rf File) decodeLine(bytes []byte) (*models.Record, error) <span class="cov8" title="1">{
         var record models.Record
         if unmarshalErr := json.Unmarshal(bytes, &amp;record); unmarshalErr != nil </span><span class="cov8" title="1">{
                 return nil, fmt.Errorf("Error of record unmarshalling: %s", unmarshalErr)

@@ -12,7 +12,8 @@ import (
 
 var counterCalls int
 
-type RecordFile struct {
+// File implements record.Int
+type File struct {
 	wg      *sync.WaitGroup
 	storage storage.Int
 	jobs    chan models.Job
@@ -20,13 +21,14 @@ type RecordFile struct {
 	errors  chan error
 }
 
-func NewRecordFile(
+// NewFile returns new instance of File struct
+func NewFile(
 	wg *sync.WaitGroup,
 	storage storage.Int,
 	jobs chan models.Job,
 	results chan models.Result,
-	errors chan error) RecordInt {
-	return RecordFile{
+	errors chan error) Int {
+	return File{
 		wg:      wg,
 		storage: storage,
 		jobs:    jobs,
@@ -35,7 +37,8 @@ func NewRecordFile(
 	}
 }
 
-func (rf RecordFile) ReadLines(file *os.File) error {
+// Readlines reads file and write results to channels
+func (rf File) ReadLines(file *os.File) error {
 	recordWg := &sync.WaitGroup{}
 	go func(file *os.File, jobs chan models.Job, errors chan error, wg *sync.WaitGroup) {
 		defer close(jobs)
@@ -70,7 +73,8 @@ func (rf RecordFile) ReadLines(file *os.File) error {
 	return nil
 }
 
-func (rf RecordFile) decodeLine(bytes []byte) (*models.Record, error) {
+// decodeLine decode json line from file
+func (rf File) decodeLine(bytes []byte) (*models.Record, error) {
 	var record models.Record
 	if unmarshalErr := json.Unmarshal(bytes, &record); unmarshalErr != nil {
 		return nil, fmt.Errorf("Error of record unmarshalling: %s", unmarshalErr)

@@ -5,7 +5,8 @@ import (
 	"relap/pkg/models"
 )
 
-type RecordInt interface {
+// Int represents available actions for record
+type Int interface {
 	ReadLines(file *os.File) error
 	decodeLine(data []byte) (*models.Record, error)
 }

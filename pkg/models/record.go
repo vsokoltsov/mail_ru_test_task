@@ -1,5 +1,6 @@
 package models
 
+// Record represents line in the given file
 type Record struct {
 	URL             string   `json:"url"`
 	State           string   `json:"state"`

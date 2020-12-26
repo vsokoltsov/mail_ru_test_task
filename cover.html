@@ -86,12 +86,15 @@ import (
         "golang.org/x/net/html"
 )
 
+// HTML implements handler.Int interface
 type HTML struct{}
 
+// NewHTML returns new HTML instance
 func NewHTML() Int <span class="cov8" title="1">{
         return &amp;HTML{}
 }</span>
 
+// extractMetaProperty extracts attributes based on parameters
 func (hh *HTML) extractMetaProperty(t html.Token, prop string) (content string, ok bool) <span class="cov8" title="1">{
         for _, attr := range t.Attr </span><span class="cov8" title="1">{
                 if attr.Key == "name" &amp;&amp; attr.Val == prop </span><span class="cov8" title="1">{
@@ -106,6 +109,7 @@ func (hh *HTML) extractMetaProperty(t html.Token, prop string) (content string, 
         <span class="cov8" title="1">return</span>
 }
 
+// Parse parsed give html page
 func (hh *HTML) Parse(body io.ReadCloser) (*models.ResultData, error) <span class="cov8" title="1">{
         result := models.ResultData{}
         tokenizer := html.NewTokenizer(body)
@@ -163,6 +167,7 @@ import (
 
 var counterCalls int
 
+// File implements record.Int
 type File struct {
         wg      *sync.WaitGroup
         storage storage.Int
@@ -171,6 +176,7 @@ type File struct {
         errors  chan error
 }
 
+// NewFile returns new instance of File struct
 func NewFile(
         wg *sync.WaitGroup,
         storage storage.Int,
@@ -186,6 +192,7 @@ func NewFile(
         }
 }</span>
 
+// Readlines reads file and write results to channels
 func (rf File) ReadLines(file *os.File) error <span class="cov8" title="1">{
         recordWg := &amp;sync.WaitGroup{}
         go func(file *os.File, jobs chan models.Job, errors chan error, wg *sync.WaitGroup) </span><span class="cov8" title="1">{
@@ -221,6 +228,7 @@ func (rf File) ReadLines(file *os.File) error <span class="cov8" title="1">{
         <span class="cov8" title="1">return nil</span>
 }
 
+// decodeLine decode json line from file
 func (rf File) decodeLine(bytes []byte) (*models.Record, error) <span class="cov8" title="1">{
         var record models.Record
         if unmarshalErr := json.Unmarshal(bytes, &amp;record); unmarshalErr != nil </span><span class="cov8" title="1">{
@@ -234,20 +242,25 @@ func (rf File) decodeLine(bytes []byte) (*models.Record, error) <span class="cov
 
 import "os"
 
+// FileStorage implements storage Int interface
 type FileStorage struct{}
 
+// NewFileStorage returns new instance of FileStorage struct
 func NewFileStorage() *FileStorage <span class="cov8" title="1">{
         return &amp;FileStorage{}
 }</span>
 
+// OpenFile opens file with specific directives
 func (fs *FileStorage) OpenFile(path string, flag int, perm os.FileMode) (*os.File, error) <span class="cov8" title="1">{
         return os.OpenFile(path, flag, perm)
 }</span>
 
+// CreateFile creates new file
 func (fs *FileStorage) CreateFile(path string) (*os.File, error) <span class="cov8" title="1">{
         return os.Create(path)
 }</span>
 
+// ResultPath generates file path based on attributes
 func (fs *FileStorage) ResultPath(dir, name, ext string) string <span class="cov8" title="1">{
         return dir + name + "." + ext
 }</span>

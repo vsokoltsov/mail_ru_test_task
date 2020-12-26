@@ -157,8 +157,8 @@ func TestWorkersReadPoolSuccessReadFromChannels(t *testing.T) {
 func TestWorkersReadPoolFailedReadFromChannels(t *testing.T) {
 	var (
 		ctrl    = gomock.NewController(t)
-		jobs    = make(chan models.Job)
-		results = make(chan models.Result, 3)
+		jobs    = make(chan models.Job, 1)
+		results = make(chan models.Result)
 		wg      = &sync.WaitGroup{}
 		wrkr    = NewMockInt(ctrl)
 		pool    = NewWorkersReadPool(1, wg, jobs, results, wrkr)

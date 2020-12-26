@@ -7,12 +7,14 @@ import (
 	"time"
 )
 
+// Worker represents worker info
 type Worker struct {
 	client  *http.Client
 	handler handler.HandlerInt
 }
 
-func NewWorker(handler handler.HandlerInt) WorkerInt {
+// NewWorker returns structure that implements Int
+func NewWorker(handler handler.HandlerInt) Int {
 	return Worker{
 		handler: handler,
 		client: &http.Client{
@@ -21,6 +23,7 @@ func NewWorker(handler handler.HandlerInt) WorkerInt {
 	}
 }
 
+// FetchPage fetch page based on url and write result to channel
 func (w Worker) FetchPage(url string, categories []string) (*models.ResultData, error) {
 	resp, respErr := w.client.Get(url)
 	if respErr != nil {

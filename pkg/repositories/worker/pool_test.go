@@ -17,7 +17,7 @@ func TestWorkersReadPoolSuccessListenJobs(t *testing.T) {
 		jobs               = make(chan models.Job)
 		results            = make(chan models.Result)
 		wg                 = &sync.WaitGroup{}
-		wrkr               = NewMockWorkerInt(ctrl)
+		wrkr               = NewMockInt(ctrl)
 		pool               = NewWorkersReadPool(1, wg, jobs, results, wrkr)
 		expectedResultData = &models.ResultData{
 			Title:       "Title",
@@ -50,7 +50,7 @@ func TestWorkersReadPoolFailedListenJobs(t *testing.T) {
 		jobs    = make(chan models.Job)
 		results = make(chan models.Result)
 		wg      = &sync.WaitGroup{}
-		wrkr    = NewMockWorkerInt(ctrl)
+		wrkr    = NewMockInt(ctrl)
 		pool    = NewWorkersReadPool(1, wg, jobs, results, wrkr)
 	)
 	defer ctrl.Finish()
@@ -122,7 +122,7 @@ func TestWorkersReadPoolSuccessReadFromChannels(t *testing.T) {
 		jobs    = make(chan models.Job)
 		results = make(chan models.Result, 3)
 		wg      = &sync.WaitGroup{}
-		wrkr    = NewMockWorkerInt(ctrl)
+		wrkr    = NewMockInt(ctrl)
 		pool    = NewWorkersReadPool(1, wg, jobs, results, wrkr)
 		err     = make(chan error, 1)
 	)
@@ -160,7 +160,7 @@ func TestWorkersReadPoolFailedReadFromChannels(t *testing.T) {
 		jobs    = make(chan models.Job)
 		results = make(chan models.Result, 3)
 		wg      = &sync.WaitGroup{}
-		wrkr    = NewMockWorkerInt(ctrl)
+		wrkr    = NewMockInt(ctrl)
 		pool    = NewWorkersReadPool(1, wg, jobs, results, wrkr)
 		err     = make(chan error, 1)
 	)

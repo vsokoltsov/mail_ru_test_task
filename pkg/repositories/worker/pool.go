@@ -8,14 +8,16 @@ import (
 	"sync"
 )
 
+// WorkersReadPool represents pool of workers for reading data
 type WorkersReadPool struct {
 	workersNum int
-	worker     WorkerInt
+	worker     Int
 	wg         *sync.WaitGroup
 	jobs       chan models.Job
 	results    chan models.Result
 }
 
+// WorkersWritePool represents pool of workers for writing data
 type WorkersWritePool struct {
 	workersNum int
 	jobs       chan models.CategoryJob
@@ -23,6 +25,7 @@ type WorkersWritePool struct {
 	wg         *sync.WaitGroup
 }
 
+// NewWorkersWritePool returns object that impelements WorkersWritePoolInt
 func NewWorkersWritePool(workersNum int, jobs chan models.CategoryJob, results chan *os.File, wg *sync.WaitGroup) WorkersWritePoolInt {
 	return WorkersWritePool{
 		workersNum: workersNum,
@@ -32,12 +35,13 @@ func NewWorkersWritePool(workersNum int, jobs chan models.CategoryJob, results c
 	}
 }
 
+// NewWorkersReadPool returns object that impelements WorkersReadPoolInt
 func NewWorkersReadPool(
 	workersNum int,
 	wg *sync.WaitGroup,
 	jobs chan models.Job,
 	results chan models.Result,
-	worker WorkerInt) WorkersReadPoolInt {
+	worker Int) WorkersReadPoolInt {
 	return WorkersReadPool{
 		workersNum: workersNum,
 		wg:         wg,
@@ -47,6 +51,7 @@ func NewWorkersReadPool(
 	}
 }
 
+// listenJobs Listen jobs from channel and fetch pages
 func (wp WorkersReadPool) listenJobs(id int, jobs <-chan models.Job, results chan<- models.Result) {
 	for j := range jobs {
 		var (
@@ -62,6 +67,7 @@ func (wp WorkersReadPool) listenJobs(id int, jobs <-chan models.Job, results cha
 	}
 }
 
+// StartWorkers runs workers
 func (wp WorkersReadPool) StartWorkers() {
 	wp.wg.Add(wp.workersNum)
 	for i := 0; i < wp.workersNum; i++ {
@@ -72,6 +78,7 @@ func (wp WorkersReadPool) StartWorkers() {
 	}
 }
 
+// StartWorkers runs workers
 func (wwp WorkersWritePool) StartWorkers() {
 	wwp.wg.Add(wwp.workersNum)
 	for i := 0; i < wwp.workersNum; i++ {
@@ -82,6 +89,7 @@ func (wwp WorkersWritePool) StartWorkers() {
 	}
 }
 
+// ListenWriteJobs listen write jobs and write to particular file
 func (wwp WorkersWritePool) ListenWriteJobs(id int, jobs <-chan models.CategoryJob, results chan<- *os.File) {
 	for j := range jobs {
 		for _, fd := range j.ResultsData {
@@ -91,6 +99,7 @@ func (wwp WorkersWritePool) ListenWriteJobs(id int, jobs <-chan models.CategoryJ
 	}
 }
 
+// ReadFromChannels read data from multiple channels
 func (wp WorkersReadPool) ReadFromChannels(results chan models.Result, errors chan error) (map[string][]*models.ResultData, error) {
 	categoryRecords := make(map[string][]*models.ResultData)
 READ:

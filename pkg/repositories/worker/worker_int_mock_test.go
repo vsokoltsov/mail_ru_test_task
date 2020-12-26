@@ -120,31 +120,31 @@ func (mr *MockWorkersWritePoolIntMockRecorder) ListenWriteJobs(id, jobs, results
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListenWriteJobs", reflect.TypeOf((*MockWorkersWritePoolInt)(nil).ListenWriteJobs), id, jobs, results)
 }
 
-// MockWorkerInt is a mock of WorkerInt interface
-type MockWorkerInt struct {
+// MockInt is a mock of Int interface
+type MockInt struct {
 	ctrl     *gomock.Controller
-	recorder *MockWorkerIntMockRecorder
+	recorder *MockIntMockRecorder
 }
 
-// MockWorkerIntMockRecorder is the mock recorder for MockWorkerInt
-type MockWorkerIntMockRecorder struct {
-	mock *MockWorkerInt
+// MockIntMockRecorder is the mock recorder for MockInt
+type MockIntMockRecorder struct {
+	mock *MockInt
 }
 
-// NewMockWorkerInt creates a new mock instance
-func NewMockWorkerInt(ctrl *gomock.Controller) *MockWorkerInt {
-	mock := &MockWorkerInt{ctrl: ctrl}
-	mock.recorder = &MockWorkerIntMockRecorder{mock}
+// NewMockInt creates a new mock instance
+func NewMockInt(ctrl *gomock.Controller) *MockInt {
+	mock := &MockInt{ctrl: ctrl}
+	mock.recorder = &MockIntMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use
-func (m *MockWorkerInt) EXPECT() *MockWorkerIntMockRecorder {
+func (m *MockInt) EXPECT() *MockIntMockRecorder {
 	return m.recorder
 }
 
 // FetchPage mocks base method
-func (m *MockWorkerInt) FetchPage(url string, categories []string) (*models.ResultData, error) {
+func (m *MockInt) FetchPage(url string, categories []string) (*models.ResultData, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FetchPage", url, categories)
 	ret0, _ := ret[0].(*models.ResultData)
@@ -153,7 +153,7 @@ func (m *MockWorkerInt) FetchPage(url string, categories []string) (*models.Resu
 }
 
 // FetchPage indicates an expected call of FetchPage
-func (mr *MockWorkerIntMockRecorder) FetchPage(url, categories interface{}) *gomock.Call {
+func (mr *MockIntMockRecorder) FetchPage(url, categories interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchPage", reflect.TypeOf((*MockWorkerInt)(nil).FetchPage), url, categories)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchPage", reflect.TypeOf((*MockInt)(nil).FetchPage), url, categories)
 }

@@ -39,12 +39,13 @@ func main() {
 		results,
 		errors,
 	)
-	workersPool := worker.NewWorkersPool(
+	wrkr := worker.NewWorker(htmlHandler)
+	workersPool := worker.NewWorkersReadPool(
 		*goNum,
-		htmlHandler,
 		wg,
 		jobs,
 		results,
+		wrkr,
 	)
 
 	absPath, filePathErr := filepath.Abs(*path)
@@ -64,7 +65,10 @@ func main() {
 		log.Fatal(readErr)
 	}
 
-	categoryRecords := readFromChannles(results, errors)
+	categoryRecords, readFileError := workersPool.ReadFromChannels(results, errors)
+	if readFileError != nil {
+		log.Fatalf("Error file reading: %s", readFileError.Error())
+	}
 	categoryFiles := make(map[string]*os.File)
 	for category := range categoryRecords {
 		p := filepath.Join(*resultsDir, category+"."+*resultExt)
@@ -115,37 +119,4 @@ func main() {
 	}
 
 	log.Println("Finished")
-}
-
-func readFromChannles(results chan models.Result, errors chan error) map[string][]*models.ResultData {
-	categoryRecords := make(map[string][]*models.ResultData)
-READ:
-	for {
-		select {
-		case r, ok := <-results:
-			if !ok {
-				break READ
-			}
-			if r.Err != nil {
-				log.Printf("Error: %s", r.Err)
-			} else {
-				log.Printf("URL: %s; Title: %s; Description: %s", r.Result.URL, r.Result.Title, r.Result.Description)
-				for _, category := range r.Result.Categories {
-					_, ok := categoryRecords[category]
-					if ok {
-						categoryRecords[category] = append(categoryRecords[category], r.Result)
-					} else {
-						categoryRecords[category] = []*models.ResultData{
-							r.Result,
-						}
-					}
-				}
-			}
-		case errChan := <-errors:
-			if errChan != nil {
-				log.Fatalf("Error file reading: %s", errChan.Error())
-			}
-		}
-	}
-	return categoryRecords
 }

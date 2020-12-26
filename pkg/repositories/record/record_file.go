@@ -14,7 +14,7 @@ var counterCalls int
 
 type RecordFile struct {
 	wg      *sync.WaitGroup
-	storage storage.StorageInt
+	storage storage.Int
 	jobs    chan models.Job
 	results chan models.Result
 	errors  chan error
@@ -22,7 +22,7 @@ type RecordFile struct {
 
 func NewRecordFile(
 	wg *sync.WaitGroup,
-	storage storage.StorageInt,
+	storage storage.Int,
 	jobs chan models.Job,
 	results chan models.Result,
 	errors chan error) RecordInt {

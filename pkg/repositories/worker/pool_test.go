@@ -27,7 +27,7 @@ func TestWorkersReadPoolSuccessListenJobs(t *testing.T) {
 		}
 	)
 	defer ctrl.Finish()
-	pool.StartWorkers()
+	pool.StartReadWorkers()
 
 	wrkr.EXPECT().
 		FetchPage("http://example.com", []string{"1", "2", "3"}).
@@ -54,7 +54,7 @@ func TestWorkersReadPoolFailedListenJobs(t *testing.T) {
 		pool    = NewWorkersReadPool(1, wg, jobs, results, wrkr)
 	)
 	defer ctrl.Finish()
-	pool.StartWorkers()
+	pool.StartReadWorkers()
 
 	wrkr.EXPECT().
 		FetchPage("http://example.com", []string{"1", "2", "3"}).

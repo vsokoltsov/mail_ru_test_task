@@ -7,8 +7,9 @@ import (
 
 // WorkersReadPoolInt represents actions for workers read pool interface
 type WorkersReadPoolInt interface {
-	StartWorkers()
-	ReadFromChannels(results chan models.Result, errors chan error) (map[string][]*models.ResultData, error)
+	StartReadWorkers()
+	StartWriteWorkers()
+	ReadFromChannels(results chan models.Result, writeChan chan PoolWriteJob, errors chan error) (map[string][]*models.ResultData, error)
 	listenJobs(id int, jobs <-chan models.Job, results chan<- models.Result)
 }
 

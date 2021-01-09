@@ -45,16 +45,6 @@ type WriteResult struct {
 	File     *os.File
 }
 
-// NewWorkersWritePool returns object that impelements WorkersWritePoolInt
-func NewWorkersWritePool(workersNum int, jobs chan models.CategoryJob, results chan *os.File, wg *sync.WaitGroup) WorkersWritePoolInt {
-	return WorkersWritePool{
-		workersNum: workersNum,
-		jobs:       jobs,
-		results:    results,
-		wg:         wg,
-	}
-}
-
 // NewWorkersReadPool returns object that impelements WorkersReadPoolInt
 func NewWorkersReadPool(
 	workersNum int,
@@ -121,32 +111,9 @@ func (wp WorkersReadPool) StartWriteWorkers() {
 
 func (wp WorkersReadPool) listenJobsForWrite(id int, wg *sync.WaitGroup, jobs <-chan PoolWriteJob, results chan<- WriteResult) {
 	for j := range jobs {
-		wp.fmu.Lock()
 		j.File.WriteString(strings.Join([]string{j.ResultData.URL, j.ResultData.Title, j.ResultData.Description, "\n"}, " "))
+		j.File.Sync()
 		results <- WriteResult{Category: j.Category, File: j.File}
-		wg.Done()
-		wp.fmu.Unlock()
-	}
-}
-
-// StartWorkers runs workers
-func (wwp WorkersWritePool) StartWorkers() {
-	wwp.wg.Add(wwp.workersNum)
-	for i := 0; i < wwp.workersNum; i++ {
-		go func(i int, wwp WorkersWritePool) {
-			defer wwp.wg.Done()
-			wwp.ListenWriteJobs(i, wwp.jobs, wwp.results)
-		}(i, wwp)
-	}
-}
-
-// ListenWriteJobs listen write jobs and write to particular file
-func (wwp WorkersWritePool) ListenWriteJobs(id int, jobs <-chan models.CategoryJob, results chan<- *os.File) {
-	for j := range jobs {
-		for _, fd := range j.ResultsData {
-			j.File.WriteString(strings.Join([]string{fd.URL, fd.Title, fd.Description, "\n"}, " "))
-		}
-		results <- j.File
 	}
 }
 

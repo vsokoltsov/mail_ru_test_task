@@ -3,7 +3,7 @@ package pipeline
 import (
 	"fmt"
 	"os"
-	"relap/pkg/repositories/worker"
+	"relap/pkg/models"
 )
 
 type Combiner struct {
@@ -16,7 +16,7 @@ func NewCombiner() Pipe {
 func (c Combiner) Call(in, out chan interface{}) {
 	categoryFiles := make(map[string]*os.File)
 	for data := range in {
-		wr := data.(worker.WriteResult)
+		wr := data.(models.WriteResult)
 		categoryFiles[wr.Category] = wr.File
 	}
 

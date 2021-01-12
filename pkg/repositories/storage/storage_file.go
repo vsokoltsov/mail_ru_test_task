@@ -1,6 +1,9 @@
 package storage
 
-import "os"
+import (
+	"os"
+	"path/filepath"
+)
 
 // FileStorage implements storage Int interface
 type FileStorage struct{}
@@ -22,5 +25,5 @@ func (fs *FileStorage) CreateFile(path string) (*os.File, error) {
 
 // ResultPath generates file path based on attributes
 func (fs *FileStorage) ResultPath(dir, name, ext string) string {
-	return dir + name + "." + ext
+	return filepath.Join(dir, name, ".", ext)
 }

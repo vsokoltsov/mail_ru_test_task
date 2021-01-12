@@ -11,13 +11,13 @@ import (
 
 type Reader struct {
 	file    *os.File
-	results chan models.Result
+	results chan models.ReadResult
 	wg      *sync.WaitGroup
-	jobs    chan models.Job
+	jobs    chan models.ReadJob
 	errors  chan error
 }
 
-func NewReader(file *os.File, results chan models.Result, wg *sync.WaitGroup, jobs chan models.Job, errors chan error) Pipe {
+func NewReader(file *os.File, results chan models.ReadResult, wg *sync.WaitGroup, jobs chan models.ReadJob, errors chan error) Pipe {
 	return Reader{
 		file:    file,
 		results: results,
@@ -30,7 +30,7 @@ func NewReader(file *os.File, results chan models.Result, wg *sync.WaitGroup, jo
 func (r Reader) Call(in, out chan interface{}) {
 	mainWg := &sync.WaitGroup{}
 	recordWg := &sync.WaitGroup{}
-	go func(file *os.File, jobs chan models.Job, errors chan error, wg *sync.WaitGroup, mainWg *sync.WaitGroup) {
+	go func(file *os.File, jobs chan models.ReadJob, errors chan error, wg *sync.WaitGroup, mainWg *sync.WaitGroup) {
 		defer close(jobs)
 		defer close(errors)
 
@@ -46,7 +46,7 @@ func (r Reader) Call(in, out chan interface{}) {
 
 			if len(record.Categories) > 0 {
 				writesNum++
-				jobs <- models.Job{Record: record}
+				jobs <- models.ReadJob{Record: record}
 			}
 		}
 
@@ -55,7 +55,7 @@ func (r Reader) Call(in, out chan interface{}) {
 		}
 	}(r.file, r.jobs, r.errors, recordWg, mainWg)
 
-	go func(wg *sync.WaitGroup, results chan models.Result) {
+	go func(wg *sync.WaitGroup, results chan models.ReadResult) {
 		wg.Wait()
 		close(results)
 	}(r.wg, r.results)

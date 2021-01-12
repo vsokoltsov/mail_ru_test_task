@@ -8,6 +8,7 @@ import (
 	"relap/pkg/models"
 	"relap/pkg/repositories/handler"
 	"relap/pkg/repositories/pipeline"
+	"relap/pkg/repositories/pool"
 	"relap/pkg/repositories/storage"
 	"relap/pkg/repositories/worker"
 	"sync"
@@ -21,16 +22,13 @@ func main() {
 		// resultsDir = flag.String("results", "./../../results/", "Folder with result files.")
 		// resultExt  = flag.String("ext", "tsv", "Extension of the resulting file.")
 		goNum        = flag.Int("go-num", 25, "Number of pages per goroutines")
-		wg           = &sync.WaitGroup{}
+		readWg       = &sync.WaitGroup{}
 		writeWg      = &sync.WaitGroup{}
-		jobs         = make(chan models.Job)
-		results      = make(chan models.Result)
+		readJobs     = make(chan models.ReadJob)
+		readResults  = make(chan models.ReadResult)
 		errors       = make(chan error)
-		pwj          = make(chan worker.PoolWriteJob)
-		writeResults = make(chan worker.WriteResult)
-		resultWg     = &sync.WaitGroup{}
-
-		// fileJobs = make(chan models.CategoryJob)
+		writeJobs    = make(chan models.WriteJob)
+		writeResults = make(chan models.WriteResult)
 	)
 
 	flag.Parse()
@@ -38,17 +36,8 @@ func main() {
 	fs := storage.NewFileStorage()
 	htmlHandler := handler.NewHTML()
 	wrkr := worker.NewWorker(htmlHandler)
-	workersPool := worker.NewWorkersReadPool(
-		*goNum,
-		wg,
-		jobs,
-		results,
-		wrkr,
-		pwj,
-		writeWg,
-		writeResults,
-		resultWg,
-	)
+	readPool := pool.NewReadPool(*goNum, readWg, readJobs, readResults, wrkr)
+	writePool := pool.NewWritePool(*goNum, writeWg, writeJobs, writeResults)
 
 	absPath, filePathErr := filepath.Abs(*path)
 	if filePathErr != nil {
@@ -60,10 +49,10 @@ func main() {
 	}
 	defer file.Close()
 
-	workersPool.StartReadWorkers()
-	workersPool.StartWriteWorkers()
-	readerPipe := pipeline.NewReader(file, results, wg, jobs, errors)
-	writerPipe := pipeline.NewWriter(writeWg, pwj, writeResults, errors)
+	readPool.StartWorkers()
+	writePool.StartWorkers()
+	readerPipe := pipeline.NewReader(file, readResults, readWg, readJobs, errors)
+	writerPipe := pipeline.NewWriter(writeWg, writeJobs, writeResults, errors)
 	combinerPipe := pipeline.NewCombiner()
 
 	pipes := []pipeline.Pipe{

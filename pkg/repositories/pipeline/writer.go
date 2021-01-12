@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"os"
 	"relap/pkg/models"
-	"relap/pkg/repositories/worker"
 	"sync"
 )
 
 type Writer struct {
 	wg            *sync.WaitGroup
-	jobs          chan worker.PoolWriteJob
-	results       chan worker.WriteResult
+	jobs          chan models.WriteJob
+	results       chan models.WriteResult
 	errors        chan error
 	mu            *sync.Mutex
 	categoryFiles map[string]*os.File
@@ -19,8 +18,8 @@ type Writer struct {
 
 func NewWriter(
 	wg *sync.WaitGroup,
-	jobs chan worker.PoolWriteJob,
-	results chan worker.WriteResult,
+	jobs chan models.WriteJob,
+	results chan models.WriteResult,
 	errors chan error) Pipe {
 	return Writer{
 		wg:            wg,
@@ -44,12 +43,12 @@ func (w Writer) Call(in, out chan interface{}) {
 				if catFile == nil {
 					catFile, _ = w.setCategoryFile(category)
 				}
-				w.jobs <- worker.PoolWriteJob{File: catFile, ResultData: resultData, Category: category}
+				w.jobs <- models.WriteJob{File: catFile, ResultData: resultData, Category: category}
 			}
 		}
 	}(in, &w)
 
-	go func(wg *sync.WaitGroup, results chan worker.WriteResult) {
+	go func(wg *sync.WaitGroup, results chan models.WriteResult) {
 		wg.Wait()
 		close(results)
 	}(w.wg, w.results)

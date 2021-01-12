@@ -98,8 +98,8 @@ func (w Writer) Call(in, out chan interface{}) {
 				catFile = w.getCategoryFile(category)
 				if catFile == nil {
 					catFile, _ = w.setCategoryFile(category)
-					w.jobs <- worker.PoolWriteJob{File: catFile, ResultData: resultData, Category: category}
 				}
+				w.jobs <- worker.PoolWriteJob{File: catFile, ResultData: resultData, Category: category}
 			}
 		}
 	}(in, &w)
@@ -137,7 +137,7 @@ func (w Writer) getCategoryFile(category string) *os.File {
 func (w Writer) setCategoryFile(category string) (*os.File, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	categoryFile, err := os.Create(category + ".tsv")
+	categoryFile, err := os.OpenFile(category+".tsv", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		return nil, fmt.Errorf("Error of creating %s file: %s", category, err)
 	}

@@ -111,9 +111,12 @@ func (wp WorkersReadPool) StartWriteWorkers() {
 
 func (wp WorkersReadPool) listenJobsForWrite(id int, wg *sync.WaitGroup, jobs <-chan PoolWriteJob, results chan<- WriteResult) {
 	for j := range jobs {
-		j.File.WriteString(strings.Join([]string{j.ResultData.URL, j.ResultData.Title, j.ResultData.Description, "\n"}, " "))
+		wp.fmu.Lock()
 		j.File.Sync()
+		j.File.WriteString(strings.Join([]string{j.ResultData.URL, j.ResultData.Title, j.ResultData.Description, "\n"}, " "))
 		results <- WriteResult{Category: j.Category, File: j.File}
+		j.File.Sync()
+		wp.fmu.Unlock()
 	}
 }
 

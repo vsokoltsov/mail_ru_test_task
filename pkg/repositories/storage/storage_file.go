@@ -25,5 +25,5 @@ func (fs *FileStorage) CreateFile(path string) (*os.File, error) {
 
 // ResultPath generates file path based on attributes
 func (fs *FileStorage) ResultPath(dir, name, ext string) string {
-	return filepath.Join(dir, name, ".", ext)
+	return filepath.Join(dir, name+"."+ext)
 }

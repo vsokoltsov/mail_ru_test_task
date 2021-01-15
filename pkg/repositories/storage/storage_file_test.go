@@ -7,8 +7,8 @@ import (
 )
 
 func TestStorageCreateFile(t *testing.T) {
-	storage := NewFileStorage()
-	_, err := storage.CreateFile("./test")
+	storage := NewFileStorage("./test", "tsv")
+	_, err := storage.CreateFile("./test", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		t.Errorf("Error of creating the file: %s", err)
 	}
@@ -20,8 +20,8 @@ func TestStorageCreateFile(t *testing.T) {
 }
 
 func TestStorageOpenFile(t *testing.T) {
-	storage := NewFileStorage()
-	_, err := storage.CreateFile("./test")
+	storage := NewFileStorage("./test", "tsv")
+	_, err := storage.CreateFile("./test", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		t.Errorf("Error of creating the file: %s", err)
 	}
@@ -37,13 +37,11 @@ func TestStorageOpenFile(t *testing.T) {
 }
 
 func TestStorageResultPath(t *testing.T) {
-	storage := NewFileStorage()
+	storage := NewFileStorage("/a/b/c/", "txt")
 	var (
-		dir  = "/a/b/c/"
 		name = "test"
-		ext  = "txt"
 	)
-	path := storage.ResultPath(dir, name, ext)
+	path := storage.ResultPath(name)
 	if path != "/a/b/c/test.txt" {
 		t.Errorf("Generated file path does not match: %s", path)
 	}

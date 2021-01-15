@@ -21,7 +21,7 @@ func (c Combiner) Call(in, out chan interface{}) {
 	}
 
 	for category, file := range categoryFiles {
-		fmt.Println("Category: ", category, "File: ", file)
+		fmt.Println("Category:", category, "File:", file.Name())
 		file.Sync()
 		file.Close()
 	}

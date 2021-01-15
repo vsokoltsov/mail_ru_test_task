@@ -11,16 +11,40 @@ import (
 	"relap/pkg/repositories/pool"
 	"relap/pkg/repositories/storage"
 	"relap/pkg/repositories/worker"
+	"strings"
 	"sync"
 	"time"
 )
 
+func getProjectPath(delimeter string) string {
+	projectDirectory, directoryErr := os.Getwd()
+
+	if directoryErr != nil {
+		log.Fatalf("Could not locate current directory: %s", directoryErr)
+	}
+
+	isUnderCmd := strings.Contains(projectDirectory, delimeter)
+	if isUnderCmd {
+		var cmdIdx int
+		splitPath := strings.Split(projectDirectory, "/")
+		for idx, pathElem := range splitPath {
+			if pathElem == delimeter {
+				cmdIdx = idx
+				break
+			}
+		}
+		projectDirectory = strings.Join(splitPath[:cmdIdx], "/")
+	}
+
+	return projectDirectory
+}
+
 func main() {
 	var (
-		startTime = time.Now()
-		path      = flag.String("file", "./../../500.jsonl", "Path to a file")
-		// resultsDir = flag.String("results", "./../../results/", "Folder with result files.")
-		// resultExt  = flag.String("ext", "tsv", "Extension of the resulting file.")
+		startTime    = time.Now()
+		filePath     = flag.String("file", "500.jsonl", "Path to a file")
+		resultsDir   = flag.String("results", "results/", "Folder with result files.")
+		resultExt    = flag.String("ext", "tsv", "Extension of the resulting file.")
 		goNum        = flag.Int("go-num", 25, "Number of pages per goroutines")
 		readWg       = &sync.WaitGroup{}
 		writeWg      = &sync.WaitGroup{}
@@ -32,17 +56,16 @@ func main() {
 	)
 
 	flag.Parse()
+	projectPath := getProjectPath("cmd")
+	resultPath := filepath.Join(projectPath, *resultsDir)
+	fs := storage.NewFileStorage(resultPath, *resultExt)
 
-	fs := storage.NewFileStorage()
 	htmlHandler := handler.NewHTML()
 	wrkr := worker.NewWorker(htmlHandler)
 	readPool := pool.NewReadPool(*goNum, readWg, readJobs, readResults, wrkr)
 	writePool := pool.NewWritePool(*goNum, writeWg, writeJobs, writeResults)
 
-	absPath, filePathErr := filepath.Abs(*path)
-	if filePathErr != nil {
-		log.Fatalf("Absolute path error: %s", filePathErr)
-	}
+	absPath := filepath.Join(projectPath, *filePath)
 	file, fileErr := fs.OpenFile(absPath, os.O_RDONLY, 0644)
 	if fileErr != nil {
 		log.Fatal(fileErr)
@@ -52,7 +75,7 @@ func main() {
 	readPool.StartWorkers()
 	writePool.StartWorkers()
 	readerPipe := pipeline.NewReader(file, readResults, readWg, readJobs, errors)
-	writerPipe := pipeline.NewWriter(writeWg, writeJobs, writeResults, errors)
+	writerPipe := pipeline.NewWriter(writeWg, writeJobs, writeResults, errors, fs)
 	combinerPipe := pipeline.NewCombiner()
 
 	pipes := []pipeline.Pipe{

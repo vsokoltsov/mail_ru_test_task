@@ -9,6 +9,7 @@ import (
 	"sync"
 )
 
+// Reader implements Pipe interface for reading data
 type Reader struct {
 	file    *os.File
 	results chan models.ReadResult
@@ -17,6 +18,7 @@ type Reader struct {
 	errors  chan error
 }
 
+// NewReader returns new instance of Reader pipe
 func NewReader(file *os.File, results chan models.ReadResult, wg *sync.WaitGroup, jobs chan models.ReadJob, errors chan error) Pipe {
 	return Reader{
 		file:    file,
@@ -27,6 +29,7 @@ func NewReader(file *os.File, results chan models.ReadResult, wg *sync.WaitGroup
 	}
 }
 
+// Call executes main Pipe action for reading
 func (r Reader) Call(in, out chan interface{}) {
 	mainWg := &sync.WaitGroup{}
 	recordWg := &sync.WaitGroup{}

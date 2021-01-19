@@ -2,10 +2,12 @@ package pipeline
 
 import "sync"
 
+// Pipe represents actions for element of pipeline
 type Pipe interface {
 	Call(in, out chan interface{})
 }
 
+// ExecutePipeline executes list of pipes
 func ExecutePipeline(pipes ...Pipe) {
 	in := make(chan interface{}, 1)
 	wg := &sync.WaitGroup{}

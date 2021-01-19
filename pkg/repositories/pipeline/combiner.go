@@ -6,13 +6,16 @@ import (
 	"relap/pkg/models"
 )
 
+// Combiner represents implementation of Pipe for resulting data
 type Combiner struct {
 }
 
+// NewCombiner returns representation of Pipe
 func NewCombiner() Pipe {
 	return Combiner{}
 }
 
+// Call implements call of the Pipe
 func (c Combiner) Call(in, out chan interface{}) {
 	categoryFiles := make(map[string]*os.File)
 	for data := range in {

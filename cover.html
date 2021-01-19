@@ -56,13 +56,9 @@
 				
 				<option value="file0">relap/pkg/repositories/handler/handler_html.go (100.0%)</option>
 				
-				<option value="file1">relap/pkg/repositories/record/record_file.go (96.2%)</option>
+				<option value="file1">relap/pkg/repositories/storage/storage_file.go (100.0%)</option>
 				
-				<option value="file2">relap/pkg/repositories/storage/storage_file.go (100.0%)</option>
-				
-				<option value="file3">relap/pkg/repositories/worker/pool.go (100.0%)</option>
-				
-				<option value="file4">relap/pkg/repositories/worker/worker.go (100.0%)</option>
+				<option value="file2">relap/pkg/repositories/worker/worker.go (100.0%)</option>
 				
 				</select>
 			</div>
@@ -153,101 +149,25 @@ func (hh *HTML) Parse(body io.ReadCloser) (*models.ResultData, error) <span clas
 }
 </pre>
 		
-		<pre class="file" id="file1" style="display: none">package record
+		<pre class="file" id="file1" style="display: none">package storage
 
 import (
-        "bufio"
-        "encoding/json"
-        "fmt"
         "os"
-        "relap/pkg/models"
-        "relap/pkg/repositories/storage"
-        "sync"
+        "path/filepath"
 )
 
-var counterCalls int
-
-// File implements record.Int
-type File struct {
-        wg      *sync.WaitGroup
-        storage storage.Int
-        jobs    chan models.Job
-        results chan models.Result
-        errors  chan error
-}
-
-// NewFile returns new instance of File struct
-func NewFile(
-        wg *sync.WaitGroup,
-        storage storage.Int,
-        jobs chan models.Job,
-        results chan models.Result,
-        errors chan error) Int <span class="cov8" title="1">{
-        return File{
-                wg:      wg,
-                storage: storage,
-                jobs:    jobs,
-                results: results,
-                errors:  errors,
-        }
-}</span>
-
-// Readlines reads file and write results to channels
-func (rf File) ReadLines(file *os.File) error <span class="cov8" title="1">{
-        recordWg := &amp;sync.WaitGroup{}
-        go func(file *os.File, jobs chan models.Job, errors chan error, wg *sync.WaitGroup) </span><span class="cov8" title="1">{
-                defer close(jobs)
-                defer close(errors)
-
-                scanner := bufio.NewScanner(file)
-                var writesNum int
-                for scanner.Scan() </span><span class="cov8" title="1">{
-                        bytes := scanner.Bytes()
-                        record, decodeError := rf.decodeLine(bytes)
-                        if decodeError != nil </span><span class="cov8" title="1">{
-                                errors &lt;- decodeError
-                                break</span>
-                        }
-
-                        <span class="cov8" title="1">if len(record.Categories) &gt; 0 </span><span class="cov8" title="1">{
-                                writesNum++
-                                jobs &lt;- models.Job{Record: record}
-                        }</span>
-                }
-
-                <span class="cov8" title="1">if scannerErr := scanner.Err(); scannerErr != nil </span><span class="cov0" title="0">{
-                        errors &lt;- scannerErr
-                }</span>
-        }(file, rf.jobs, rf.errors, recordWg)
-
-        <span class="cov8" title="1">go func(wg *sync.WaitGroup, results chan models.Result) </span><span class="cov8" title="1">{
-                wg.Wait()
-                close(results)
-        }</span>(rf.wg, rf.results)
-
-        <span class="cov8" title="1">return nil</span>
-}
-
-// decodeLine decode json line from file
-func (rf File) decodeLine(bytes []byte) (*models.Record, error) <span class="cov8" title="1">{
-        var record models.Record
-        if unmarshalErr := json.Unmarshal(bytes, &amp;record); unmarshalErr != nil </span><span class="cov8" title="1">{
-                return nil, fmt.Errorf("Error of record unmarshalling: %s", unmarshalErr)
-        }</span>
-        <span class="cov8" title="1">return &amp;record, nil</span>
-}
-</pre>
-		
-		<pre class="file" id="file2" style="display: none">package storage
-
-import "os"
-
 // FileStorage implements storage Int interface
-type FileStorage struct{}
+type FileStorage struct {
+        resultExt string
+        resultDir string
+}
 
 // NewFileStorage returns new instance of FileStorage struct
-func NewFileStorage() *FileStorage <span class="cov8" title="1">{
-        return &amp;FileStorage{}
+func NewFileStorage(resultDir, resultExt string) *FileStorage <span class="cov8" title="1">{
+        return &amp;FileStorage{
+                resultDir: resultDir,
+                resultExt: resultExt,
+        }
 }</span>
 
 // OpenFile opens file with specific directives
@@ -256,153 +176,17 @@ func (fs *FileStorage) OpenFile(path string, flag int, perm os.FileMode) (*os.Fi
 }</span>
 
 // CreateFile creates new file
-func (fs *FileStorage) CreateFile(path string) (*os.File, error) <span class="cov8" title="1">{
-        return os.Create(path)
+func (fs *FileStorage) CreateFile(path string, flag int, perm os.FileMode) (*os.File, error) <span class="cov8" title="1">{
+        return os.OpenFile(path, flag, perm)
 }</span>
 
 // ResultPath generates file path based on attributes
-func (fs *FileStorage) ResultPath(dir, name, ext string) string <span class="cov8" title="1">{
-        return dir + name + "." + ext
+func (fs *FileStorage) ResultPath(name string) string <span class="cov8" title="1">{
+        return filepath.Join(fs.resultDir, name+"."+fs.resultExt)
 }</span>
 </pre>
 		
-		<pre class="file" id="file3" style="display: none">package worker
-
-import (
-        "log"
-        "os"
-        "relap/pkg/models"
-        "strings"
-        "sync"
-)
-
-// WorkersReadPool represents pool of workers for reading data
-type WorkersReadPool struct {
-        workersNum int
-        worker     Int
-        wg         *sync.WaitGroup
-        jobs       chan models.Job
-        results    chan models.Result
-}
-
-// WorkersWritePool represents pool of workers for writing data
-type WorkersWritePool struct {
-        workersNum int
-        jobs       chan models.CategoryJob
-        results    chan *os.File
-        wg         *sync.WaitGroup
-}
-
-// NewWorkersWritePool returns object that impelements WorkersWritePoolInt
-func NewWorkersWritePool(workersNum int, jobs chan models.CategoryJob, results chan *os.File, wg *sync.WaitGroup) WorkersWritePoolInt <span class="cov8" title="1">{
-        return WorkersWritePool{
-                workersNum: workersNum,
-                jobs:       jobs,
-                results:    results,
-                wg:         wg,
-        }
-}</span>
-
-// NewWorkersReadPool returns object that impelements WorkersReadPoolInt
-func NewWorkersReadPool(
-        workersNum int,
-        wg *sync.WaitGroup,
-        jobs chan models.Job,
-        results chan models.Result,
-        worker Int) WorkersReadPoolInt <span class="cov8" title="1">{
-        return WorkersReadPool{
-                workersNum: workersNum,
-                wg:         wg,
-                jobs:       jobs,
-                results:    results,
-                worker:     worker,
-        }
-}</span>
-
-// listenJobs Listen jobs from channel and fetch pages
-func (wp WorkersReadPool) listenJobs(id int, jobs &lt;-chan models.Job, results chan&lt;- models.Result) <span class="cov8" title="1">{
-        for j := range jobs </span><span class="cov8" title="1">{
-                var (
-                        result models.Result
-                )
-                resultData, err := wp.worker.FetchPage(j.Record.URL, j.Record.Categories)
-                if err != nil </span><span class="cov8" title="1">{
-                        result.Err = err
-                }</span>
-                <span class="cov8" title="1">result.Result = resultData
-                result.WorkerID = id
-                results &lt;- result</span>
-        }
-}
-
-// StartWorkers runs workers
-func (wp WorkersReadPool) StartWorkers() <span class="cov8" title="1">{
-        wp.wg.Add(wp.workersNum)
-        for i := 0; i &lt; wp.workersNum; i++ </span><span class="cov8" title="1">{
-                go func(i int, wp *WorkersReadPool) </span><span class="cov8" title="1">{
-                        defer wp.wg.Done()
-                        wp.listenJobs(i, wp.jobs, wp.results)
-                }</span>(i, &amp;wp)
-        }
-}
-
-// StartWorkers runs workers
-func (wwp WorkersWritePool) StartWorkers() <span class="cov8" title="1">{
-        wwp.wg.Add(wwp.workersNum)
-        for i := 0; i &lt; wwp.workersNum; i++ </span><span class="cov8" title="1">{
-                go func(i int, wwp WorkersWritePool) </span><span class="cov8" title="1">{
-                        defer wwp.wg.Done()
-                        wwp.ListenWriteJobs(i, wwp.jobs, wwp.results)
-                }</span>(i, wwp)
-        }
-}
-
-// ListenWriteJobs listen write jobs and write to particular file
-func (wwp WorkersWritePool) ListenWriteJobs(id int, jobs &lt;-chan models.CategoryJob, results chan&lt;- *os.File) <span class="cov8" title="1">{
-        for j := range jobs </span><span class="cov8" title="1">{
-                for _, fd := range j.ResultsData </span><span class="cov8" title="1">{
-                        j.File.WriteString(strings.Join([]string{fd.URL, fd.Title, fd.Description, "\n"}, " "))
-                }</span>
-                <span class="cov8" title="1">results &lt;- j.File</span>
-        }
-}
-
-// ReadFromChannels read data from multiple channels
-func (wp WorkersReadPool) ReadFromChannels(results chan models.Result, errors chan error) (map[string][]*models.ResultData, error) <span class="cov8" title="1">{
-        categoryRecords := make(map[string][]*models.ResultData)
-READ:
-        for </span><span class="cov8" title="1">{
-                select </span>{
-                case r, ok := &lt;-results:<span class="cov8" title="1">
-                        if !ok </span><span class="cov8" title="1">{
-                                break READ</span>
-                        }
-                        <span class="cov8" title="1">if r.Err != nil </span><span class="cov8" title="1">{
-                                log.Printf("Error: %s", r.Err)
-                        }</span> else<span class="cov8" title="1"> {
-                                log.Printf("URL: %s; Title: %s; Description: %s", r.Result.URL, r.Result.Title, r.Result.Description)
-                                for _, category := range r.Result.Categories </span><span class="cov8" title="1">{
-                                        _, ok := categoryRecords[category]
-                                        if ok </span><span class="cov8" title="1">{
-                                                categoryRecords[category] = append(categoryRecords[category], r.Result)
-                                        }</span> else<span class="cov8" title="1"> {
-                                                categoryRecords[category] = []*models.ResultData{
-                                                        r.Result,
-                                                }
-                                        }</span>
-                                }
-                        }
-                case errChan := &lt;-errors:<span class="cov8" title="1">
-                        if errChan != nil </span><span class="cov8" title="1">{
-                                return nil, errChan
-                        }</span>
-                }
-        }
-        <span class="cov8" title="1">return categoryRecords, nil</span>
-}
-</pre>
-		
-		<pre class="file" id="file4" style="display: none">package worker
+		<pre class="file" id="file2" style="display: none">package worker
 
 import (
         "net/http"

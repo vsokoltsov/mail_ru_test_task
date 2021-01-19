@@ -8,6 +8,7 @@ import (
 	"sync"
 )
 
+// Writer represents Pipe interface for writing
 type Writer struct {
 	wg            *sync.WaitGroup
 	jobs          chan models.WriteJob
@@ -18,6 +19,7 @@ type Writer struct {
 	store         storage.Int
 }
 
+// NewWriter returns new Writer pipe
 func NewWriter(
 	wg *sync.WaitGroup,
 	jobs chan models.WriteJob,
@@ -34,6 +36,7 @@ func NewWriter(
 	}
 }
 
+// Call executes pipe action for writing results to file
 func (w Writer) Call(in, out chan interface{}) {
 	go func(in chan interface{}, w *Writer) {
 		defer close(w.jobs)

@@ -6,11 +6,6 @@ import (
 	"sync"
 )
 
-type Read interface {
-	StartWorkers()
-	listenJobs(id int)
-}
-
 type ReadPool struct {
 	workersNum int
 	wg         *sync.WaitGroup
@@ -19,7 +14,7 @@ type ReadPool struct {
 	worker     worker.Int
 }
 
-func NewReadPool(workersNum int, wg *sync.WaitGroup, jobs <-chan models.ReadJob, results chan<- models.ReadResult, worker worker.Int) Read {
+func NewReadPool(workersNum int, wg *sync.WaitGroup, jobs <-chan models.ReadJob, results chan<- models.ReadResult, worker worker.Int) Communication {
 	return ReadPool{
 		wg:         wg,
 		workersNum: workersNum,

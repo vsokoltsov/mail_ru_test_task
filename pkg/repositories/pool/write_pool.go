@@ -6,11 +6,6 @@ import (
 	"sync"
 )
 
-type Write interface {
-	StartWorkers()
-	listenWriteJobs(id int)
-}
-
 type WritePool struct {
 	workersNum int
 	mu         *sync.Mutex
@@ -19,7 +14,7 @@ type WritePool struct {
 	results    chan<- models.WriteResult
 }
 
-func NewWritePool(workersNum int, wg *sync.WaitGroup, jobs <-chan models.WriteJob, results chan<- models.WriteResult) Write {
+func NewWritePool(workersNum int, wg *sync.WaitGroup, jobs <-chan models.WriteJob, results chan<- models.WriteResult) Communication {
 	return WritePool{
 		workersNum: workersNum,
 		wg:         wg,
@@ -34,12 +29,12 @@ func (wp WritePool) StartWorkers() {
 	for i := 0; i < wp.workersNum; i++ {
 		go func(i int, wp *WritePool) {
 			defer wp.wg.Done()
-			wp.listenWriteJobs(i)
+			wp.listenJobs(i)
 		}(i, &wp)
 	}
 }
 
-func (wp WritePool) listenWriteJobs(i int) {
+func (wp WritePool) listenJobs(i int) {
 	for j := range wp.jobs {
 		wp.mu.Lock()
 		j.File.Sync()

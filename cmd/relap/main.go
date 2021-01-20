@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"relap/pkg/models"
 	"relap/pkg/repositories/handler"
 	"relap/pkg/repositories/pipeline"
 	"relap/pkg/repositories/pool"
@@ -48,11 +47,11 @@ func main() {
 		goNum        = flag.Int("go-num", 25, "Number of pages per goroutines")
 		readWg       = &sync.WaitGroup{}
 		writeWg      = &sync.WaitGroup{}
-		readJobs     = make(chan models.ReadJob)
-		readResults  = make(chan models.ReadResult)
+		readJobs     = make(chan pipeline.ReadJob)
+		readResults  = make(chan pipeline.ReadResult)
 		errors       = make(chan error)
-		writeJobs    = make(chan models.WriteJob)
-		writeResults = make(chan models.WriteResult)
+		writeJobs    = make(chan pipeline.WriteJob)
+		writeResults = make(chan pipeline.WriteResult)
 	)
 
 	flag.Parse()

@@ -1,7 +1,7 @@
 package pool
 
 import (
-	"relap/pkg/models"
+	"relap/pkg/repositories/pipeline"
 	"relap/pkg/repositories/worker"
 	"sync"
 )
@@ -9,24 +9,12 @@ import (
 type ReadPool struct {
 	workersNum int
 	wg         *sync.WaitGroup
-	jobs       <-chan models.ReadJob
-	results    chan<- models.ReadResult
+	jobs       <-chan pipeline.ReadJob
+	results    chan<- pipeline.ReadResult
 	worker     worker.Int
 }
 
-// ReadJob defines job for read workers pool
-type ReadJob struct {
-	Record *Record
-}
-
-// Result represents operation outcome
-type ReadResult struct {
-	WorkerID int
-	Result   *ResultData
-	Err      error
-}
-
-func NewReadPool(workersNum int, wg *sync.WaitGroup, jobs <-chan models.ReadJob, results chan<- models.ReadResult, worker worker.Int) Communication {
+func NewReadPool(workersNum int, wg *sync.WaitGroup, jobs <-chan pipeline.ReadJob, results chan<- pipeline.ReadResult, worker worker.Int) Communication {
 	return ReadPool{
 		wg:         wg,
 		workersNum: workersNum,
@@ -49,7 +37,7 @@ func (rp ReadPool) StartWorkers() {
 func (rp ReadPool) listenJobs(id int) {
 	for j := range rp.jobs {
 		var (
-			result models.ReadResult
+			result pipeline.ReadResult
 		)
 		resultData, err := rp.worker.FetchPage(j.Record.URL, j.Record.Categories)
 		if err != nil {

@@ -3,7 +3,6 @@ package pipeline
 import (
 	"fmt"
 	"os"
-	"relap/pkg/models"
 )
 
 // Reducer represents implementation of Pipe for resulting data
@@ -19,7 +18,7 @@ func NewReducer() Pipe {
 func (c Reducer) Call(in, out chan interface{}) {
 	categoryFiles := make(map[string]*os.File)
 	for data := range in {
-		wr := data.(models.WriteResult)
+		wr := data.(WriteResult)
 		categoryFiles[wr.Category] = wr.File
 	}
 

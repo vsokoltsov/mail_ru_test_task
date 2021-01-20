@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"relap/pkg/models"
 	"relap/pkg/repositories/handler"
 	"strings"
 	"testing"
@@ -24,14 +23,14 @@ type MockSuccessHandler struct {
 type MockFailedHandler struct {
 }
 
-func (mshi MockSuccessHandler) Parse(body io.ReadCloser) (*models.ResultData, error) {
-	return &models.ResultData{
+func (mshi MockSuccessHandler) Parse(body io.ReadCloser) (*handler.ResultData, error) {
+	return &handler.ResultData{
 		Title:       "Title",
 		Description: "Description",
 	}, nil
 }
 
-func (mfhi MockFailedHandler) Parse(body io.ReadCloser) (*models.ResultData, error) {
+func (mfhi MockFailedHandler) Parse(body io.ReadCloser) (*handler.ResultData, error) {
 	return nil, fmt.Errorf("Parse error")
 }
 

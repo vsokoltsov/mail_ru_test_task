@@ -54,7 +54,7 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">relap/pkg/repositories/handler/handler_html.go (100.0%)</option>
+				<option value="file0">relap/pkg/repositories/handler/handler_html.go (97.4%)</option>
 				
 				<option value="file1">relap/pkg/repositories/storage/storage_file.go (100.0%)</option>
 				
@@ -76,14 +76,23 @@
 
 import (
         "io"
-        "relap/pkg/models"
-        "relap/pkg/utils"
+        "log"
+        "strings"
+        "unicode/utf8"
 
         "golang.org/x/net/html"
 )
 
 // HTML implements handler.Int interface
 type HTML struct{}
+
+// ResultData contains final information for file writing
+type ResultData struct {
+        Title       string
+        Description string
+        URL         string
+        Categories  []string
+}
 
 // NewHTML returns new HTML instance
 func NewHTML() Int <span class="cov8" title="1">{
@@ -106,8 +115,8 @@ func (hh *HTML) extractMetaProperty(t html.Token, prop string) (content string, 
 }
 
 // Parse parsed give html page
-func (hh *HTML) Parse(body io.ReadCloser) (*models.ResultData, error) <span class="cov8" title="1">{
-        result := models.ResultData{}
+func (hh *HTML) Parse(body io.ReadCloser) (*ResultData, error) <span class="cov8" title="1">{
+        result := ResultData{}
         tokenizer := html.NewTokenizer(body)
         for </span><span class="cov8" title="1">{
                 tt := tokenizer.Next()
@@ -122,22 +131,22 @@ func (hh *HTML) Parse(body io.ReadCloser) (*models.ResultData, error) <span clas
                         if t.Data == "title" </span><span class="cov8" title="1">{
                                 tokenType := tokenizer.Next()
                                 if tokenType == html.TextToken </span><span class="cov8" title="1">{
-                                        result.Title = utils.PrepareString(tokenizer.Token().Data)
+                                        result.Title = prepareString(tokenizer.Token().Data)
                                         break</span>
                                 }
                         }
                         <span class="cov8" title="1">if t.Data == "meta" </span><span class="cov8" title="1">{
                                 metaDesc, isDesc := hh.extractMetaProperty(t, "description")
                                 if isDesc </span><span class="cov8" title="1">{
-                                        result.Description = utils.PrepareString(metaDesc)
+                                        result.Description = prepareString(metaDesc)
                                 }</span>
                                 <span class="cov8" title="1">metaDescUp, isDescUp := hh.extractMetaProperty(t, "Description")
                                 if isDescUp </span><span class="cov8" title="1">{
-                                        result.Description = utils.PrepareString(metaDescUp)
+                                        result.Description = prepareString(metaDescUp)
                                 }</span>
                                 <span class="cov8" title="1">metaTitle, isTitle := hh.extractMetaProperty(t, "title")
                                 if isTitle &amp;&amp; result.Title == "" </span><span class="cov8" title="1">{
-                                        result.Title = utils.PrepareString(metaTitle)
+                                        result.Title = prepareString(metaTitle)
                                 }</span>
                         }
                 }
@@ -146,6 +155,15 @@ func (hh *HTML) Parse(body io.ReadCloser) (*models.ResultData, error) <span clas
                 }
         }
         <span class="cov8" title="1">return &amp;result, nil</span>
+}
+
+func prepareString(str string) string <span class="cov8" title="1">{
+        data := strings.Replace(str, "\n", " ", -1)
+        data = strings.TrimSpace(data)
+        if !utf8.ValidString(data) </span><span class="cov0" title="0">{
+                log.Printf("Non-utf8 encoding: %s", data)
+        }</span>
+        <span class="cov8" title="1">return data</span>
 }
 </pre>
 		
@@ -190,7 +208,6 @@ func (fs *FileStorage) ResultPath(name string) string <span class="cov8" title="
 
 import (
         "net/http"
-        "relap/pkg/models"
         "relap/pkg/repositories/handler"
         "time"
 )
@@ -212,7 +229,7 @@ func NewWorker(handler handler.Int) Int <span class="cov8" title="1">{
 }</span>
 
 // FetchPage fetch page based on url and write result to channel
-func (w Worker) FetchPage(url string, categories []string) (*models.ResultData, error) <span class="cov8" title="1">{
+func (w Worker) FetchPage(url string, categories []string) (*handler.ResultData, error) <span class="cov8" title="1">{
         resp, respErr := w.client.Get(url)
         if respErr != nil </span><span class="cov8" title="1">{
                 return nil, respErr
@@ -220,7 +237,7 @@ func (w Worker) FetchPage(url string, categories []string) (*models.ResultData, 
         <span class="cov8" title="1">defer resp.Body.Close()
 
         if resp.StatusCode == http.StatusNotFound </span><span class="cov8" title="1">{
-                data := &amp;models.ResultData{
+                data := &amp;handler.ResultData{
                         Title:       "Not Found",
                         Description: "Not Found",
                         URL:         url,

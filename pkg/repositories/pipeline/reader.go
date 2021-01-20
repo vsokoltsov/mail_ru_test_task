@@ -2,24 +2,44 @@ package pipeline
 
 import (
 	"bufio"
-	"encoding/json"
-	"fmt"
 	"os"
-	"relap/pkg/models"
+	"relap/pkg/repositories/handler"
+	"relap/pkg/repositories/record"
 	"sync"
 )
 
 // Reader implements Pipe interface for reading data
 type Reader struct {
 	file    *os.File
-	results chan models.ReadResult
+	results chan ReadResult
 	wg      *sync.WaitGroup
-	jobs    chan models.ReadJob
+	jobs    chan ReadJob
 	errors  chan error
 }
 
+// ReadJob defines job for read workers pool
+type ReadJob struct {
+	Record *record.Row
+}
+
+// Result represents operation outcome
+type ReadResult struct {
+	WorkerID int
+	Result   *handler.ResultData
+	Err      error
+}
+
+// type Record struct {
+// 	URL             string   `json:"url"`
+// 	State           string   `json:"state"`
+// 	Categories      []string `json:"categories"`
+// 	CategoryAnother string   `json:"category_another"`
+// 	ForMainPage     bool     `json:"for_main_page"`
+// 	Ctime           int      `json:"ctime"`
+// }
+
 // NewReader returns new instance of Reader pipe
-func NewReader(file *os.File, results chan models.ReadResult, wg *sync.WaitGroup, jobs chan models.ReadJob, errors chan error) Pipe {
+func NewReader(file *os.File, results chan ReadResult, wg *sync.WaitGroup, jobs chan ReadJob, errors chan error) Pipe {
 	return Reader{
 		file:    file,
 		results: results,
@@ -33,7 +53,7 @@ func NewReader(file *os.File, results chan models.ReadResult, wg *sync.WaitGroup
 func (r Reader) Call(in, out chan interface{}) {
 	mainWg := &sync.WaitGroup{}
 	recordWg := &sync.WaitGroup{}
-	go func(file *os.File, jobs chan models.ReadJob, errors chan error, wg *sync.WaitGroup, mainWg *sync.WaitGroup) {
+	go func(file *os.File, jobs chan ReadJob, errors chan error, wg *sync.WaitGroup, mainWg *sync.WaitGroup) {
 		defer close(jobs)
 		defer close(errors)
 
@@ -41,15 +61,15 @@ func (r Reader) Call(in, out chan interface{}) {
 		var writesNum int
 		for scanner.Scan() {
 			bytes := scanner.Bytes()
-			record, decodeError := decodeLine(bytes)
+			row, decodeError := record.DecodeLine(bytes)
 			if decodeError != nil {
 				errors <- decodeError
 				break
 			}
 
-			if len(record.Categories) > 0 {
+			if len(row.Categories) > 0 {
 				writesNum++
-				jobs <- models.ReadJob{Record: record}
+				jobs <- ReadJob{Record: row}
 			}
 		}
 
@@ -58,7 +78,7 @@ func (r Reader) Call(in, out chan interface{}) {
 		}
 	}(r.file, r.jobs, r.errors, recordWg, mainWg)
 
-	go func(wg *sync.WaitGroup, results chan models.ReadResult) {
+	go func(wg *sync.WaitGroup, results chan ReadResult) {
 		wg.Wait()
 		close(results)
 	}(r.wg, r.results)
@@ -68,12 +88,4 @@ func (r Reader) Call(in, out chan interface{}) {
 			out <- res.Result
 		}
 	}
-}
-
-func decodeLine(bytes []byte) (*models.Record, error) {
-	var record models.Record
-	if unmarshalErr := json.Unmarshal(bytes, &record); unmarshalErr != nil {
-		return nil, fmt.Errorf("Error of record unmarshalling: %s", unmarshalErr)
-	}
-	return &record, nil
 }

@@ -2,7 +2,9 @@ package handler
 
 import (
 	"io"
-	"relap/pkg/utils"
+	"log"
+	"strings"
+	"unicode/utf8"
 
 	"golang.org/x/net/html"
 )
@@ -55,22 +57,22 @@ func (hh *HTML) Parse(body io.ReadCloser) (*ResultData, error) {
 			if t.Data == "title" {
 				tokenType := tokenizer.Next()
 				if tokenType == html.TextToken {
-					result.Title = utils.PrepareString(tokenizer.Token().Data)
+					result.Title = prepareString(tokenizer.Token().Data)
 					break
 				}
 			}
 			if t.Data == "meta" {
 				metaDesc, isDesc := hh.extractMetaProperty(t, "description")
 				if isDesc {
-					result.Description = utils.PrepareString(metaDesc)
+					result.Description = prepareString(metaDesc)
 				}
 				metaDescUp, isDescUp := hh.extractMetaProperty(t, "Description")
 				if isDescUp {
-					result.Description = utils.PrepareString(metaDescUp)
+					result.Description = prepareString(metaDescUp)
 				}
 				metaTitle, isTitle := hh.extractMetaProperty(t, "title")
 				if isTitle && result.Title == "" {
-					result.Title = utils.PrepareString(metaTitle)
+					result.Title = prepareString(metaTitle)
 				}
 			}
 		}
@@ -79,4 +81,13 @@ func (hh *HTML) Parse(body io.ReadCloser) (*ResultData, error) {
 		}
 	}
 	return &result, nil
+}
+
+func prepareString(str string) string {
+	data := strings.Replace(str, "\n", " ", -1)
+	data = strings.TrimSpace(data)
+	if !utf8.ValidString(data) {
+		log.Printf("Non-utf8 encoding: %s", data)
+	}
+	return data
 }

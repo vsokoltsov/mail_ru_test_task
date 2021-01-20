@@ -2,7 +2,6 @@ package worker
 
 import (
 	"net/http"
-	"relap/pkg/models"
 	"relap/pkg/repositories/handler"
 	"time"
 )
@@ -24,7 +23,7 @@ func NewWorker(handler handler.Int) Int {
 }
 
 // FetchPage fetch page based on url and write result to channel
-func (w Worker) FetchPage(url string, categories []string) (*models.ResultData, error) {
+func (w Worker) FetchPage(url string, categories []string) (*handler.ResultData, error) {
 	resp, respErr := w.client.Get(url)
 	if respErr != nil {
 		return nil, respErr
@@ -32,7 +31,7 @@ func (w Worker) FetchPage(url string, categories []string) (*models.ResultData, 
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
-		data := &models.ResultData{
+		data := &handler.ResultData{
 			Title:       "Not Found",
 			Description: "Not Found",
 			URL:         url,

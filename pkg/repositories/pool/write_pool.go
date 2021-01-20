@@ -1,8 +1,7 @@
 package pool
 
 import (
-	"os"
-	"relap/pkg/models"
+	"relap/pkg/repositories/pipeline"
 	"strings"
 	"sync"
 )
@@ -11,23 +10,11 @@ type WritePool struct {
 	workersNum int
 	mu         *sync.Mutex
 	wg         *sync.WaitGroup
-	jobs       <-chan models.WriteJob
-	results    chan<- models.WriteResult
+	jobs       <-chan pipeline.WriteJob
+	results    chan<- pipeline.WriteResult
 }
 
-type WriteJob struct {
-	WorkerID   int
-	File       *os.File
-	ResultData *ResultData
-	Category   string
-}
-
-type WriteResult struct {
-	Category string
-	File     *os.File
-}
-
-func NewWritePool(workersNum int, wg *sync.WaitGroup, jobs <-chan models.WriteJob, results chan<- models.WriteResult) Communication {
+func NewWritePool(workersNum int, wg *sync.WaitGroup, jobs <-chan pipeline.WriteJob, results chan<- pipeline.WriteResult) Communication {
 	return WritePool{
 		workersNum: workersNum,
 		wg:         wg,
@@ -52,7 +39,7 @@ func (wp WritePool) listenJobs(i int) {
 		wp.mu.Lock()
 		j.File.Sync()
 		j.File.WriteString(strings.Join([]string{j.ResultData.URL, j.ResultData.Title, j.ResultData.Description, "\n"}, " "))
-		wp.results <- models.WriteResult{Category: j.Category, File: j.File}
+		wp.results <- pipeline.WriteResult{Category: j.Category, File: j.File}
 		j.File.Sync()
 		wp.mu.Unlock()
 	}

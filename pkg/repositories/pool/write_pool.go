@@ -1,6 +1,7 @@
 package pool
 
 import (
+	"os"
 	"relap/pkg/models"
 	"strings"
 	"sync"
@@ -12,6 +13,18 @@ type WritePool struct {
 	wg         *sync.WaitGroup
 	jobs       <-chan models.WriteJob
 	results    chan<- models.WriteResult
+}
+
+type WriteJob struct {
+	WorkerID   int
+	File       *os.File
+	ResultData *ResultData
+	Category   string
+}
+
+type WriteResult struct {
+	Category string
+	File     *os.File
 }
 
 func NewWritePool(workersNum int, wg *sync.WaitGroup, jobs <-chan models.WriteJob, results chan<- models.WriteResult) Communication {

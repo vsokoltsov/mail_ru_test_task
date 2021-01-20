@@ -47,9 +47,6 @@ func (w Writer) Call(in, out chan interface{}) {
 					catFile *os.File
 				)
 				catFile = w.getCategoryFile(category)
-				if catFile == nil {
-					catFile, _ = w.setCategoryFile(category)
-				}
 				w.jobs <- models.WriteJob{File: catFile, ResultData: resultData, Category: category}
 			}
 		}
@@ -68,16 +65,24 @@ func (w Writer) Call(in, out chan interface{}) {
 func (w Writer) getCategoryFile(category string) *os.File {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	return w.categoryFiles[category]
+	var file *os.File
+
+	file, present := w.categoryFiles[category]
+	if !present {
+		file, _ = w.setCategoryFile(category)
+	}
+	return file
 }
 
 func (w Writer) setCategoryFile(category string) (*os.File, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+
 	fp := w.store.ResultPath(category)
 	categoryFile, err := w.store.CreateFile(fp, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		return nil, fmt.Errorf("Error of creating %s file: %s", category, err)
 	}
+	w.categoryFiles[category] = categoryFile
 	return categoryFile, nil
 }

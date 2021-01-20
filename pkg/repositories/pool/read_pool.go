@@ -14,6 +14,18 @@ type ReadPool struct {
 	worker     worker.Int
 }
 
+// ReadJob defines job for read workers pool
+type ReadJob struct {
+	Record *Record
+}
+
+// Result represents operation outcome
+type ReadResult struct {
+	WorkerID int
+	Result   *ResultData
+	Err      error
+}
+
 func NewReadPool(workersNum int, wg *sync.WaitGroup, jobs <-chan models.ReadJob, results chan<- models.ReadResult, worker worker.Int) Communication {
 	return ReadPool{
 		wg:         wg,

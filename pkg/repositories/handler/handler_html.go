@@ -2,7 +2,6 @@ package handler
 
 import (
 	"io"
-	"relap/pkg/models"
 	"relap/pkg/utils"
 
 	"golang.org/x/net/html"
@@ -10,6 +9,14 @@ import (
 
 // HTML implements handler.Int interface
 type HTML struct{}
+
+// ResultData contains final information for file writing
+type ResultData struct {
+	Title       string
+	Description string
+	URL         string
+	Categories  []string
+}
 
 // NewHTML returns new HTML instance
 func NewHTML() Int {
@@ -32,8 +39,8 @@ func (hh *HTML) extractMetaProperty(t html.Token, prop string) (content string, 
 }
 
 // Parse parsed give html page
-func (hh *HTML) Parse(body io.ReadCloser) (*models.ResultData, error) {
-	result := models.ResultData{}
+func (hh *HTML) Parse(body io.ReadCloser) (*ResultData, error) {
+	result := ResultData{}
 	tokenizer := html.NewTokenizer(body)
 	for {
 		tt := tokenizer.Next()

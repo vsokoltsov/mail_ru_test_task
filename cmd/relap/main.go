@@ -87,12 +87,12 @@ func main() {
 	// Define pipes for all operations
 	readerPipe := pipeline.NewReader(file, readResults, readWg, readJobs, errors)
 	writerPipe := pipeline.NewWriter(writeWg, writeJobs, writeResults, errors, fs)
-	combinerPipe := pipeline.NewCombiner()
+	ReducerPipe := pipeline.NewReducer()
 
 	pipes := []pipeline.Pipe{
 		readerPipe,
 		writerPipe,
-		combinerPipe,
+		ReducerPipe,
 	}
 
 	// Execute pipeline

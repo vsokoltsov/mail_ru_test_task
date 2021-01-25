@@ -56,9 +56,15 @@
 				
 				<option value="file0">relap/pkg/repositories/handler/handler_html.go (97.4%)</option>
 				
-				<option value="file1">relap/pkg/repositories/storage/storage_file.go (100.0%)</option>
+				<option value="file1">relap/pkg/repositories/pool/read_pool.go (100.0%)</option>
 				
-				<option value="file2">relap/pkg/repositories/worker/worker.go (100.0%)</option>
+				<option value="file2">relap/pkg/repositories/pool/write_pool.go (100.0%)</option>
+				
+				<option value="file3">relap/pkg/repositories/storage/storage_file.go (100.0%)</option>
+				
+				<option value="file4">relap/pkg/repositories/worker/worker.go (100.0%)</option>
+				
+				<option value="file5">relap/pkg/repositories/worker/worker_int_mock.go (0.0%)</option>
 				
 				</select>
 			</div>
@@ -167,7 +173,107 @@ func prepareString(str string) string <span class="cov8" title="1">{
 }
 </pre>
 		
-		<pre class="file" id="file1" style="display: none">package storage
+		<pre class="file" id="file1" style="display: none">package pool
+
+import (
+        "relap/pkg/repositories/pipeline"
+        "relap/pkg/repositories/worker"
+        "sync"
+)
+
+type ReadPool struct {
+        workersNum int
+        wg         *sync.WaitGroup
+        jobs       &lt;-chan pipeline.ReadJob
+        results    chan&lt;- pipeline.ReadResult
+        worker     worker.Int
+}
+
+func NewReadPool(workersNum int, wg *sync.WaitGroup, jobs &lt;-chan pipeline.ReadJob, results chan&lt;- pipeline.ReadResult, worker worker.Int) Communication <span class="cov8" title="1">{
+        return ReadPool{
+                wg:         wg,
+                workersNum: workersNum,
+                jobs:       jobs,
+                results:    results,
+                worker:     worker,
+        }
+}</span>
+
+func (rp ReadPool) StartWorkers() <span class="cov8" title="1">{
+        rp.wg.Add(rp.workersNum)
+        for i := 0; i &lt; rp.workersNum; i++ </span><span class="cov8" title="1">{
+                go func(i int, wp *ReadPool) </span><span class="cov8" title="1">{
+                        defer wp.wg.Done()
+                        wp.listenJobs(i)
+                }</span>(i, &amp;rp)
+        }
+}
+
+func (rp ReadPool) listenJobs(id int) <span class="cov8" title="1">{
+        for j := range rp.jobs </span><span class="cov8" title="1">{
+                var (
+                        result pipeline.ReadResult
+                )
+                resultData, err := rp.worker.FetchPage(j.Record.URL, j.Record.Categories)
+                if err != nil </span><span class="cov8" title="1">{
+                        result.Err = err
+                }</span>
+                <span class="cov8" title="1">result.Result = resultData
+                result.WorkerID = id
+                rp.results &lt;- result</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package pool
+
+import (
+        "relap/pkg/repositories/pipeline"
+        "strings"
+        "sync"
+)
+
+type WritePool struct {
+        workersNum int
+        mu         *sync.Mutex
+        wg         *sync.WaitGroup
+        jobs       &lt;-chan pipeline.WriteJob
+        results    chan&lt;- pipeline.WriteResult
+}
+
+func NewWritePool(workersNum int, wg *sync.WaitGroup, jobs &lt;-chan pipeline.WriteJob, results chan&lt;- pipeline.WriteResult) Communication <span class="cov8" title="1">{
+        return WritePool{
+                workersNum: workersNum,
+                wg:         wg,
+                jobs:       jobs,
+                results:    results,
+                mu:         &amp;sync.Mutex{},
+        }
+}</span>
+
+func (wp WritePool) StartWorkers() <span class="cov8" title="1">{
+        wp.wg.Add(wp.workersNum)
+        for i := 0; i &lt; wp.workersNum; i++ </span><span class="cov8" title="1">{
+                go func(i int, wp *WritePool) </span><span class="cov8" title="1">{
+                        defer wp.wg.Done()
+                        wp.listenJobs(i)
+                }</span>(i, &amp;wp)
+        }
+}
+
+func (wp WritePool) listenJobs(i int) <span class="cov8" title="1">{
+        for j := range wp.jobs </span><span class="cov8" title="1">{
+                wp.mu.Lock()
+                j.File.Sync()
+                j.File.WriteString(strings.Join([]string{j.ResultData.URL, j.ResultData.Title, j.ResultData.Description, "\n"}, " "))
+                wp.results &lt;- pipeline.WriteResult{Category: j.Category, File: j.File}
+                j.File.Sync()
+                wp.mu.Unlock()
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package storage
 
 import (
         "os"
@@ -204,7 +310,7 @@ func (fs *FileStorage) ResultPath(name string) string <span class="cov8" title="
 }</span>
 </pre>
 		
-		<pre class="file" id="file2" style="display: none">package worker
+		<pre class="file" id="file4" style="display: none">package worker
 
 import (
         "net/http"
@@ -253,6 +359,58 @@ func (w Worker) FetchPage(url string, categories []string) (*handler.ResultData,
         resultData.Categories = categories
         return resultData, nil</span>
 }
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">// Code generated by MockGen. DO NOT EDIT.
+// Source: worker_int.go
+
+// Package worker is a generated GoMock package.
+package worker
+
+import (
+        reflect "reflect"
+        handler "relap/pkg/repositories/handler"
+
+        gomock "github.com/golang/mock/gomock"
+)
+
+// MockInt is a mock of Int interface
+type MockInt struct {
+        ctrl     *gomock.Controller
+        recorder *MockIntMockRecorder
+}
+
+// MockIntMockRecorder is the mock recorder for MockInt
+type MockIntMockRecorder struct {
+        mock *MockInt
+}
+
+// NewMockInt creates a new mock instance
+func NewMockInt(ctrl *gomock.Controller) *MockInt <span class="cov0" title="0">{
+        mock := &amp;MockInt{ctrl: ctrl}
+        mock.recorder = &amp;MockIntMockRecorder{mock}
+        return mock
+}</span>
+
+// EXPECT returns an object that allows the caller to indicate expected use
+func (m *MockInt) EXPECT() *MockIntMockRecorder <span class="cov0" title="0">{
+        return m.recorder
+}</span>
+
+// FetchPage mocks base method
+func (m *MockInt) FetchPage(url string, categories []string) (*handler.ResultData, error) <span class="cov0" title="0">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "FetchPage", url, categories)
+        ret0, _ := ret[0].(*handler.ResultData)
+        ret1, _ := ret[1].(error)
+        return ret0, ret1
+}</span>
+
+// FetchPage indicates an expected call of FetchPage
+func (mr *MockIntMockRecorder) FetchPage(url, categories interface{}) *gomock.Call <span class="cov0" title="0">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchPage", reflect.TypeOf((*MockInt)(nil).FetchPage), url, categories)
+}</span>
 </pre>
 		
 		</div>

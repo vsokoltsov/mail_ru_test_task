@@ -44,8 +44,6 @@ func TestSuccessCall(t *testing.T) {
 	exampleFile, _ := os.Open("test_reader.jsonl")
 	defer exampleFile.Close()
 
-	// readPool := pool.NewReadPool(1, readWg, readJobs, readResults, workerIntMock)
-	// readPool.StartWorkers()
 	readWg.Add(1)
 	reader := NewReader(exampleFile, readResults, readWg, readJobs, errors)
 	go reader.Call(in, out)

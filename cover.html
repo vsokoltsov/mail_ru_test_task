@@ -62,7 +62,7 @@
 				
 				<option value="file3">relap/pkg/repositories/pipeline/reducer.go (0.0%)</option>
 				
-				<option value="file4">relap/pkg/repositories/pipeline/writer.go (0.0%)</option>
+				<option value="file4">relap/pkg/repositories/pipeline/writer.go (90.6%)</option>
 				
 				<option value="file5">relap/pkg/repositories/pool/read_pool.go (100.0%)</option>
 				
@@ -70,9 +70,11 @@
 				
 				<option value="file7">relap/pkg/repositories/storage/storage_file.go (100.0%)</option>
 				
-				<option value="file8">relap/pkg/repositories/worker/worker.go (100.0%)</option>
+				<option value="file8">relap/pkg/repositories/storage/storage_int_mock.go (0.0%)</option>
 				
-				<option value="file9">relap/pkg/repositories/worker/worker_int_mock.go (0.0%)</option>
+				<option value="file9">relap/pkg/repositories/worker/worker.go (100.0%)</option>
+				
+				<option value="file10">relap/pkg/repositories/worker/worker_int_mock.go (0.0%)</option>
 				
 				</select>
 			</div>
@@ -364,7 +366,7 @@ func NewWriter(
         jobs chan WriteJob,
         results chan WriteResult,
         errors chan error,
-        store storage.Int) Pipe <span class="cov0" title="0">{
+        store storage.Int) Pipe <span class="cov8" title="1">{
         return Writer{
                 wg:            wg,
                 jobs:          jobs,
@@ -376,12 +378,12 @@ func NewWriter(
 }</span>
 
 // Call executes pipe action for writing results to file
-func (w Writer) Call(in, out chan interface{}) <span class="cov0" title="0">{
-        go func(in chan interface{}, w *Writer) </span><span class="cov0" title="0">{
+func (w Writer) Call(in, out chan interface{}) <span class="cov8" title="1">{
+        go func(in chan interface{}, w *Writer) </span><span class="cov8" title="1">{
                 defer close(w.jobs)
-                for data := range in </span><span class="cov0" title="0">{
+                for data := range in </span><span class="cov8" title="1">{
                         resultData := data.(*handler.ResultData)
-                        for _, category := range resultData.Categories </span><span class="cov0" title="0">{
+                        for _, category := range resultData.Categories </span><span class="cov8" title="1">{
                                 var (
                                         catFile *os.File
                                 )
@@ -391,17 +393,17 @@ func (w Writer) Call(in, out chan interface{}) <span class="cov0" title="0">{
                 }
         }(in, &amp;w)
 
-        <span class="cov0" title="0">go func(wg *sync.WaitGroup, results chan WriteResult) </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">go func(wg *sync.WaitGroup, results chan WriteResult) </span><span class="cov8" title="1">{
                 wg.Wait()
                 close(results)
         }</span>(w.wg, w.results)
 
-        <span class="cov0" title="0">for res := range w.results </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">for res := range w.results </span><span class="cov8" title="1">{
                 out &lt;- res
         }</span>
 }
 
-func (w Writer) getCategoryFile(category string) *os.File <span class="cov0" title="0">{
+func (w Writer) getCategoryFile(category string) *os.File <span class="cov8" title="1">{
         w.mu.Lock()
         var file *os.File
 
@@ -411,14 +413,14 @@ func (w Writer) getCategoryFile(category string) *os.File <span class="cov0" tit
         if present </span><span class="cov0" title="0">{
                 return file
         }</span>
-        <span class="cov0" title="0">file, fileErr := w.setCategoryFile(category)
+        <span class="cov8" title="1">file, fileErr := w.setCategoryFile(category)
         if fileErr != nil </span><span class="cov0" title="0">{
                 fmt.Println(fileErr)
         }</span>
-        <span class="cov0" title="0">return file</span>
+        <span class="cov8" title="1">return file</span>
 }
 
-func (w Writer) setCategoryFile(category string) (*os.File, error) <span class="cov0" title="0">{
+func (w Writer) setCategoryFile(category string) (*os.File, error) <span class="cov8" title="1">{
         w.mu.Lock()
         defer w.mu.Unlock()
 
@@ -427,7 +429,7 @@ func (w Writer) setCategoryFile(category string) (*os.File, error) <span class="
         if err != nil </span><span class="cov0" title="0">{
                 return nil, fmt.Errorf("Error of creating %s file: %s", category, err)
         }</span>
-        <span class="cov0" title="0">w.categoryFiles[category] = categoryFile
+        <span class="cov8" title="1">w.categoryFiles[category] = categoryFile
         return categoryFile, nil</span>
 }
 </pre>
@@ -569,7 +571,87 @@ func (fs *FileStorage) ResultPath(name string) string <span class="cov8" title="
 }</span>
 </pre>
 		
-		<pre class="file" id="file8" style="display: none">package worker
+		<pre class="file" id="file8" style="display: none">// Code generated by MockGen. DO NOT EDIT.
+// Source: storage_int.go
+
+// Package storage is a generated GoMock package.
+package storage
+
+import (
+        gomock "github.com/golang/mock/gomock"
+        os "os"
+        reflect "reflect"
+)
+
+// MockInt is a mock of Int interface
+type MockInt struct {
+        ctrl     *gomock.Controller
+        recorder *MockIntMockRecorder
+}
+
+// MockIntMockRecorder is the mock recorder for MockInt
+type MockIntMockRecorder struct {
+        mock *MockInt
+}
+
+// NewMockInt creates a new mock instance
+func NewMockInt(ctrl *gomock.Controller) *MockInt <span class="cov0" title="0">{
+        mock := &amp;MockInt{ctrl: ctrl}
+        mock.recorder = &amp;MockIntMockRecorder{mock}
+        return mock
+}</span>
+
+// EXPECT returns an object that allows the caller to indicate expected use
+func (m *MockInt) EXPECT() *MockIntMockRecorder <span class="cov0" title="0">{
+        return m.recorder
+}</span>
+
+// OpenFile mocks base method
+func (m *MockInt) OpenFile(path string, flag int, perm os.FileMode) (*os.File, error) <span class="cov0" title="0">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "OpenFile", path, flag, perm)
+        ret0, _ := ret[0].(*os.File)
+        ret1, _ := ret[1].(error)
+        return ret0, ret1
+}</span>
+
+// OpenFile indicates an expected call of OpenFile
+func (mr *MockIntMockRecorder) OpenFile(path, flag, perm interface{}) *gomock.Call <span class="cov0" title="0">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OpenFile", reflect.TypeOf((*MockInt)(nil).OpenFile), path, flag, perm)
+}</span>
+
+// CreateFile mocks base method
+func (m *MockInt) CreateFile(path string, flag int, perm os.FileMode) (*os.File, error) <span class="cov0" title="0">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "CreateFile", path, flag, perm)
+        ret0, _ := ret[0].(*os.File)
+        ret1, _ := ret[1].(error)
+        return ret0, ret1
+}</span>
+
+// CreateFile indicates an expected call of CreateFile
+func (mr *MockIntMockRecorder) CreateFile(path, flag, perm interface{}) *gomock.Call <span class="cov0" title="0">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateFile", reflect.TypeOf((*MockInt)(nil).CreateFile), path, flag, perm)
+}</span>
+
+// ResultPath mocks base method
+func (m *MockInt) ResultPath(name string) string <span class="cov0" title="0">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "ResultPath", name)
+        ret0, _ := ret[0].(string)
+        return ret0
+}</span>
+
+// ResultPath indicates an expected call of ResultPath
+func (mr *MockIntMockRecorder) ResultPath(name interface{}) *gomock.Call <span class="cov0" title="0">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResultPath", reflect.TypeOf((*MockInt)(nil).ResultPath), name)
+}</span>
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">package worker
 
 import (
         "net/http"
@@ -620,7 +702,7 @@ func (w Worker) FetchPage(url string, categories []string) (*handler.ResultData,
 }
 </pre>
 		
-		<pre class="file" id="file9" style="display: none">// Code generated by MockGen. DO NOT EDIT.
+		<pre class="file" id="file10" style="display: none">// Code generated by MockGen. DO NOT EDIT.
 // Source: worker_int.go
 
 // Package worker is a generated GoMock package.

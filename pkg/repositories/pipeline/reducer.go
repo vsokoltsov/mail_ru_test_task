@@ -1,7 +1,7 @@
 package pipeline
 
 import (
-	"fmt"
+	"log"
 	"os"
 )
 
@@ -23,7 +23,7 @@ func (c Reducer) Call(in, out chan interface{}) {
 	}
 
 	for category, file := range categoryFiles {
-		fmt.Println("Category:", category, "File:", file.Name())
+		log.Printf("Category: %s; File: %s", category, file.Name())
 		file.Sync()
 		file.Close()
 	}

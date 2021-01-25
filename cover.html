@@ -60,7 +60,7 @@
 				
 				<option value="file2">relap/pkg/repositories/pipeline/reader.go (95.7%)</option>
 				
-				<option value="file3">relap/pkg/repositories/pipeline/reducer.go (0.0%)</option>
+				<option value="file3">relap/pkg/repositories/pipeline/reducer.go (100.0%)</option>
 				
 				<option value="file4">relap/pkg/repositories/pipeline/writer.go (90.6%)</option>
 				
@@ -298,7 +298,7 @@ func (r Reader) Call(in, out chan interface{}) <span class="cov8" title="1">{
 		<pre class="file" id="file3" style="display: none">package pipeline
 
 import (
-        "fmt"
+        "log"
         "os"
 )
 
@@ -307,20 +307,20 @@ type Reducer struct {
 }
 
 // NewReducer returns representation of Pipe
-func NewReducer() Pipe <span class="cov0" title="0">{
+func NewReducer() Pipe <span class="cov8" title="1">{
         return Reducer{}
 }</span>
 
 // Call implements call of the Pipe
-func (c Reducer) Call(in, out chan interface{}) <span class="cov0" title="0">{
+func (c Reducer) Call(in, out chan interface{}) <span class="cov8" title="1">{
         categoryFiles := make(map[string]*os.File)
-        for data := range in </span><span class="cov0" title="0">{
+        for data := range in </span><span class="cov8" title="1">{
                 wr := data.(WriteResult)
                 categoryFiles[wr.Category] = wr.File
         }</span>
 
-        <span class="cov0" title="0">for category, file := range categoryFiles </span><span class="cov0" title="0">{
-                fmt.Println("Category:", category, "File:", file.Name())
+        <span class="cov8" title="1">for category, file := range categoryFiles </span><span class="cov8" title="1">{
+                log.Printf("Category: %s; File: %s", category, file.Name())
                 file.Sync()
                 file.Close()
         }</span>

@@ -17,7 +17,6 @@ func TestReducerDataRead(t *testing.T) {
 	var buf bytes.Buffer
 	log.SetOutput(&buf)
 
-	// defer exampleFile.Close()
 	defer os.Remove("test.tsv")
 
 	reducer := NewReducer()

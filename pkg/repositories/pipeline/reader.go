@@ -29,15 +29,6 @@ type ReadResult struct {
 	Err      error
 }
 
-// type Record struct {
-// 	URL             string   `json:"url"`
-// 	State           string   `json:"state"`
-// 	Categories      []string `json:"categories"`
-// 	CategoryAnother string   `json:"category_another"`
-// 	ForMainPage     bool     `json:"for_main_page"`
-// 	Ctime           int      `json:"ctime"`
-// }
-
 // NewReader returns new instance of Reader pipe
 func NewReader(file *os.File, results chan ReadResult, wg *sync.WaitGroup, jobs chan ReadJob, errors chan error) Pipe {
 	return Reader{
@@ -51,9 +42,7 @@ func NewReader(file *os.File, results chan ReadResult, wg *sync.WaitGroup, jobs 
 
 // Call executes main Pipe action for reading
 func (r Reader) Call(in, out chan interface{}) {
-	mainWg := &sync.WaitGroup{}
-	recordWg := &sync.WaitGroup{}
-	go func(file *os.File, jobs chan ReadJob, errors chan error, wg *sync.WaitGroup, mainWg *sync.WaitGroup) {
+	go func(file *os.File, jobs chan ReadJob, errors chan error) {
 		defer close(jobs)
 		defer close(errors)
 
@@ -76,7 +65,7 @@ func (r Reader) Call(in, out chan interface{}) {
 		if scannerErr := scanner.Err(); scannerErr != nil {
 			errors <- scannerErr
 		}
-	}(r.file, r.jobs, r.errors, recordWg, mainWg)
+	}(r.file, r.jobs, r.errors)
 
 	go func(wg *sync.WaitGroup, results chan ReadResult) {
 		wg.Wait()

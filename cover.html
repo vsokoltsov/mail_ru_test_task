@@ -56,15 +56,23 @@
 				
 				<option value="file0">relap/pkg/repositories/handler/handler_html.go (97.4%)</option>
 				
-				<option value="file1">relap/pkg/repositories/pool/read_pool.go (100.0%)</option>
+				<option value="file1">relap/pkg/repositories/pipeline/pipeline.go (0.0%)</option>
 				
-				<option value="file2">relap/pkg/repositories/pool/write_pool.go (100.0%)</option>
+				<option value="file2">relap/pkg/repositories/pipeline/reader.go (95.7%)</option>
 				
-				<option value="file3">relap/pkg/repositories/storage/storage_file.go (100.0%)</option>
+				<option value="file3">relap/pkg/repositories/pipeline/reducer.go (0.0%)</option>
 				
-				<option value="file4">relap/pkg/repositories/worker/worker.go (100.0%)</option>
+				<option value="file4">relap/pkg/repositories/pipeline/writer.go (0.0%)</option>
 				
-				<option value="file5">relap/pkg/repositories/worker/worker_int_mock.go (0.0%)</option>
+				<option value="file5">relap/pkg/repositories/pool/read_pool.go (100.0%)</option>
+				
+				<option value="file6">relap/pkg/repositories/pool/write_pool.go (100.0%)</option>
+				
+				<option value="file7">relap/pkg/repositories/storage/storage_file.go (100.0%)</option>
+				
+				<option value="file8">relap/pkg/repositories/worker/worker.go (100.0%)</option>
+				
+				<option value="file9">relap/pkg/repositories/worker/worker_int_mock.go (0.0%)</option>
 				
 				</select>
 			</div>
@@ -173,7 +181,258 @@ func prepareString(str string) string <span class="cov8" title="1">{
 }
 </pre>
 		
-		<pre class="file" id="file1" style="display: none">package pool
+		<pre class="file" id="file1" style="display: none">package pipeline
+
+import "sync"
+
+// Pipe represents actions for element of pipeline
+type Pipe interface {
+        Call(in, out chan interface{})
+}
+
+// ExecutePipeline executes list of pipes
+func ExecutePipeline(pipes ...Pipe) <span class="cov0" title="0">{
+        in := make(chan interface{}, 1)
+        wg := &amp;sync.WaitGroup{}
+        wg.Add(len(pipes))
+        for idx := range pipes </span><span class="cov0" title="0">{
+                out := make(chan interface{}, 1)
+                j := pipes[idx]
+                go executeJob(in, out, j, wg)
+                in = out
+        }</span>
+        <span class="cov0" title="0">wg.Wait()</span>
+}
+
+func executeJob(in, out chan interface{}, j Pipe, wg *sync.WaitGroup) <span class="cov0" title="0">{
+        defer wg.Done()
+        j.Call(in, out)
+        close(out)
+}</span>
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package pipeline
+
+import (
+        "bufio"
+        "os"
+        "relap/pkg/repositories/handler"
+        "relap/pkg/repositories/record"
+        "sync"
+)
+
+// Reader implements Pipe interface for reading data
+type Reader struct {
+        file    *os.File
+        results chan ReadResult
+        wg      *sync.WaitGroup
+        jobs    chan ReadJob
+        errors  chan error
+}
+
+// ReadJob defines job for read workers pool
+type ReadJob struct {
+        Record *record.Row
+}
+
+// Result represents operation outcome
+type ReadResult struct {
+        WorkerID int
+        Result   *handler.ResultData
+        Err      error
+}
+
+// NewReader returns new instance of Reader pipe
+func NewReader(file *os.File, results chan ReadResult, wg *sync.WaitGroup, jobs chan ReadJob, errors chan error) Pipe <span class="cov8" title="1">{
+        return Reader{
+                file:    file,
+                results: results,
+                jobs:    jobs,
+                errors:  errors,
+                wg:      wg,
+        }
+}</span>
+
+// Call executes main Pipe action for reading
+func (r Reader) Call(in, out chan interface{}) <span class="cov8" title="1">{
+        go func(file *os.File, jobs chan ReadJob, errors chan error) </span><span class="cov8" title="1">{
+                defer close(jobs)
+                defer close(errors)
+
+                scanner := bufio.NewScanner(file)
+                var writesNum int
+                for scanner.Scan() </span><span class="cov8" title="1">{
+                        bytes := scanner.Bytes()
+                        row, decodeError := record.DecodeLine(bytes)
+                        if decodeError != nil </span><span class="cov8" title="1">{
+                                errors &lt;- decodeError
+                                break</span>
+                        }
+
+                        <span class="cov8" title="1">if len(row.Categories) &gt; 0 </span><span class="cov8" title="1">{
+                                writesNum++
+                                jobs &lt;- ReadJob{Record: row}
+                        }</span>
+                }
+
+                <span class="cov8" title="1">if scannerErr := scanner.Err(); scannerErr != nil </span><span class="cov0" title="0">{
+                        errors &lt;- scannerErr
+                }</span>
+        }(r.file, r.jobs, r.errors)
+
+        <span class="cov8" title="1">go func(wg *sync.WaitGroup, results chan ReadResult) </span><span class="cov8" title="1">{
+                wg.Wait()
+                close(results)
+        }</span>(r.wg, r.results)
+
+        <span class="cov8" title="1">for res := range r.results </span><span class="cov8" title="1">{
+                if res.Err == nil </span><span class="cov8" title="1">{
+                        out &lt;- res.Result
+                }</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package pipeline
+
+import (
+        "fmt"
+        "os"
+)
+
+// Reducer represents implementation of Pipe for resulting data
+type Reducer struct {
+}
+
+// NewReducer returns representation of Pipe
+func NewReducer() Pipe <span class="cov0" title="0">{
+        return Reducer{}
+}</span>
+
+// Call implements call of the Pipe
+func (c Reducer) Call(in, out chan interface{}) <span class="cov0" title="0">{
+        categoryFiles := make(map[string]*os.File)
+        for data := range in </span><span class="cov0" title="0">{
+                wr := data.(WriteResult)
+                categoryFiles[wr.Category] = wr.File
+        }</span>
+
+        <span class="cov0" title="0">for category, file := range categoryFiles </span><span class="cov0" title="0">{
+                fmt.Println("Category:", category, "File:", file.Name())
+                file.Sync()
+                file.Close()
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package pipeline
+
+import (
+        "fmt"
+        "os"
+        "relap/pkg/repositories/handler"
+        "relap/pkg/repositories/storage"
+        "sync"
+)
+
+// Writer represents Pipe interface for writing
+type Writer struct {
+        wg            *sync.WaitGroup
+        jobs          chan WriteJob
+        results       chan WriteResult
+        errors        chan error
+        mu            *sync.Mutex
+        categoryFiles map[string]*os.File
+        store         storage.Int
+}
+
+type WriteJob struct {
+        WorkerID   int
+        File       *os.File
+        ResultData *handler.ResultData
+        Category   string
+}
+
+type WriteResult struct {
+        Category string
+        File     *os.File
+}
+
+// NewWriter returns new Writer pipe
+func NewWriter(
+        wg *sync.WaitGroup,
+        jobs chan WriteJob,
+        results chan WriteResult,
+        errors chan error,
+        store storage.Int) Pipe <span class="cov0" title="0">{
+        return Writer{
+                wg:            wg,
+                jobs:          jobs,
+                results:       results,
+                categoryFiles: make(map[string]*os.File),
+                mu:            &amp;sync.Mutex{},
+                store:         store,
+        }
+}</span>
+
+// Call executes pipe action for writing results to file
+func (w Writer) Call(in, out chan interface{}) <span class="cov0" title="0">{
+        go func(in chan interface{}, w *Writer) </span><span class="cov0" title="0">{
+                defer close(w.jobs)
+                for data := range in </span><span class="cov0" title="0">{
+                        resultData := data.(*handler.ResultData)
+                        for _, category := range resultData.Categories </span><span class="cov0" title="0">{
+                                var (
+                                        catFile *os.File
+                                )
+                                catFile = w.getCategoryFile(category)
+                                w.jobs &lt;- WriteJob{File: catFile, ResultData: resultData, Category: category}
+                        }</span>
+                }
+        }(in, &amp;w)
+
+        <span class="cov0" title="0">go func(wg *sync.WaitGroup, results chan WriteResult) </span><span class="cov0" title="0">{
+                wg.Wait()
+                close(results)
+        }</span>(w.wg, w.results)
+
+        <span class="cov0" title="0">for res := range w.results </span><span class="cov0" title="0">{
+                out &lt;- res
+        }</span>
+}
+
+func (w Writer) getCategoryFile(category string) *os.File <span class="cov0" title="0">{
+        w.mu.Lock()
+        var file *os.File
+
+        file, present := w.categoryFiles[category]
+        w.mu.Unlock()
+
+        if present </span><span class="cov0" title="0">{
+                return file
+        }</span>
+        <span class="cov0" title="0">file, fileErr := w.setCategoryFile(category)
+        if fileErr != nil </span><span class="cov0" title="0">{
+                fmt.Println(fileErr)
+        }</span>
+        <span class="cov0" title="0">return file</span>
+}
+
+func (w Writer) setCategoryFile(category string) (*os.File, error) <span class="cov0" title="0">{
+        w.mu.Lock()
+        defer w.mu.Unlock()
+
+        fp := w.store.ResultPath(category)
+        categoryFile, err := w.store.CreateFile(fp, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("Error of creating %s file: %s", category, err)
+        }</span>
+        <span class="cov0" title="0">w.categoryFiles[category] = categoryFile
+        return categoryFile, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package pool
 
 import (
         "relap/pkg/repositories/pipeline"
@@ -225,7 +484,7 @@ func (rp ReadPool) listenJobs(id int) <span class="cov8" title="1">{
 }
 </pre>
 		
-		<pre class="file" id="file2" style="display: none">package pool
+		<pre class="file" id="file6" style="display: none">package pool
 
 import (
         "relap/pkg/repositories/pipeline"
@@ -273,7 +532,7 @@ func (wp WritePool) listenJobs(i int) <span class="cov8" title="1">{
 }
 </pre>
 		
-		<pre class="file" id="file3" style="display: none">package storage
+		<pre class="file" id="file7" style="display: none">package storage
 
 import (
         "os"
@@ -310,7 +569,7 @@ func (fs *FileStorage) ResultPath(name string) string <span class="cov8" title="
 }</span>
 </pre>
 		
-		<pre class="file" id="file4" style="display: none">package worker
+		<pre class="file" id="file8" style="display: none">package worker
 
 import (
         "net/http"
@@ -361,7 +620,7 @@ func (w Worker) FetchPage(url string, categories []string) (*handler.ResultData,
 }
 </pre>
 		
-		<pre class="file" id="file5" style="display: none">// Code generated by MockGen. DO NOT EDIT.
+		<pre class="file" id="file9" style="display: none">// Code generated by MockGen. DO NOT EDIT.
 // Source: worker_int.go
 
 // Package worker is a generated GoMock package.
